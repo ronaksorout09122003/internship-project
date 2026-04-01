@@ -1,0 +1,26 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:mentorplatform;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+  flyway:
+    enabled: true
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+
+app:
+  jwt:
+    secret: xjfruedsjfdepgyypbvseuophnubwgriihwhbhtmyhclhonzsorjohnmndjmowho
+    expiration-minutes: 180
+  cors:
+    allowed-origins: http://localhost:3000
+  frontend-url: http://localhost:3000
+  seed-demo-data: false
