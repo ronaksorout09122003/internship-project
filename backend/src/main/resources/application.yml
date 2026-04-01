@@ -4,9 +4,9 @@ spring:
   application:
     name: mentor-platform-backend
   datasource:
-    url: ${SPRING_DATASOURCE_URL}
-    username: ${SPRING_DATASOURCE_USERNAME}
-    password: ${SPRING_DATASOURCE_PASSWORD}
+    url: ${APP_DATASOURCE_URL:${SPRING_DATASOURCE_URL:${DATABASE_URL:}}}
+    username: ${APP_DATASOURCE_USERNAME:${SPRING_DATASOURCE_USERNAME:}}
+    password: ${APP_DATASOURCE_PASSWORD:${SPRING_DATASOURCE_PASSWORD:}}
   jpa:
     hibernate:
       ddl-auto: validate
