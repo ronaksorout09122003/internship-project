@@ -75,4 +75,17 @@ class DatabaseUrlEnvironmentPostProcessorTest {
         assertNull(settings.username());
         assertNull(settings.password());
     }
+
+    @Test
+    void fallsBackToEmbeddedH2WhenDatasourceUrlIsMissing() {
+        DatabaseUrlEnvironmentPostProcessor.DatabaseSettings settings =
+                DatabaseUrlEnvironmentPostProcessor.fallbackSettings(null, null);
+
+        assertEquals(
+                "jdbc:h2:mem:mentora-demo;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE",
+                settings.url()
+        );
+        assertEquals("sa", settings.username());
+        assertEquals("", settings.password());
+    }
 }

@@ -4,8 +4,8 @@ spring:
   application:
     name: mentor-platform-backend
   datasource:
-    url: ${APP_DATASOURCE_URL:${SPRING_DATASOURCE_URL:${DATABASE_URL:}}}
-    username: ${APP_DATASOURCE_USERNAME:${SPRING_DATASOURCE_USERNAME:}}
+    url: ${APP_DATASOURCE_URL:${SPRING_DATASOURCE_URL:${DATABASE_URL:jdbc:h2:mem:mentora-demo;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE}}}
+    username: ${APP_DATASOURCE_USERNAME:${SPRING_DATASOURCE_USERNAME:sa}}
     password: ${APP_DATASOURCE_PASSWORD:${SPRING_DATASOURCE_PASSWORD:}}
   jpa:
     hibernate:
@@ -23,6 +23,7 @@ spring:
       write-dates-as-timestamps: false
 
 server:
+  address: 0.0.0.0
   port: ${PORT:${SERVER_PORT:8080}}
 
 logging:

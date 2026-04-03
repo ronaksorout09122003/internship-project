@@ -23,23 +23,23 @@ public class DatabaseUrlEnvironmentPostProcessor implements EnvironmentPostProce
     private static final String SPRING_URL_KEY = "spring.datasource.url";
     private static final String SPRING_USERNAME_KEY = "spring.datasource.username";
     private static final String SPRING_PASSWORD_KEY = "spring.datasource.password";
+    private static final String FALLBACK_H2_URL =
+            "jdbc:h2:mem:mentora-demo;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE";
+    private static final String FALLBACK_H2_USERNAME = "sa";
+    private static final String FALLBACK_H2_PASSWORD = "";
 
     @Override
     public void postProcessEnvironment(ConfigurableEnvironment environment, SpringApplication application) {
+        String explicitUsername = environment.getProperty("SPRING_DATASOURCE_USERNAME");
+        String explicitPassword = environment.getProperty("SPRING_DATASOURCE_PASSWORD");
         String rawUrl = firstNonBlank(
                 environment.getProperty("SPRING_DATASOURCE_URL"),
                 environment.getProperty("DATABASE_URL")
         );
 
-        if (rawUrl == null) {
-            return;
-        }
-
-        DatabaseSettings normalized = normalize(
-                rawUrl,
-                environment.getProperty("SPRING_DATASOURCE_USERNAME"),
-                environment.getProperty("SPRING_DATASOURCE_PASSWORD")
-        );
+        DatabaseSettings normalized = rawUrl == null
+                ? fallbackSettings(explicitUsername, explicitPassword)
+                : normalize(rawUrl, explicitUsername, explicitPassword);
 
         Map<String, Object> properties = new LinkedHashMap<>();
         properties.put(NORMALIZED_URL_KEY, normalized.url());
@@ -148,6 +148,14 @@ public class DatabaseUrlEnvironmentPostProcessor implements EnvironmentPostProce
                 .filter(DatabaseUrlEnvironmentPostProcessor::isPresent)
                 .findFirst()
                 .orElse(null);
+    }
+
+    static DatabaseSettings fallbackSettings(String explicitUsername, String explicitPassword) {
+        return new DatabaseSettings(
+                FALLBACK_H2_URL,
+                FALLBACK_H2_USERNAME,
+                FALLBACK_H2_PASSWORD
+        );
     }
 
     private static boolean isPresent(String value) {

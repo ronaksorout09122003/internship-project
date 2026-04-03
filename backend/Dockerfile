@@ -14,6 +14,6 @@ RUN apk add --no-cache wget
 
 COPY --from=build /app/target/mentor-platform-backend-0.0.1-SNAPSHOT.jar app.jar
 
-EXPOSE 8081
+EXPOSE 8080
 
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]
