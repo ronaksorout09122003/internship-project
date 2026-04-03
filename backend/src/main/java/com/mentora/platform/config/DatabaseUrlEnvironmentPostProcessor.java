@@ -20,6 +20,9 @@ public class DatabaseUrlEnvironmentPostProcessor implements EnvironmentPostProce
     private static final String NORMALIZED_URL_KEY = "APP_DATASOURCE_URL";
     private static final String NORMALIZED_USERNAME_KEY = "APP_DATASOURCE_USERNAME";
     private static final String NORMALIZED_PASSWORD_KEY = "APP_DATASOURCE_PASSWORD";
+    private static final String SPRING_URL_KEY = "spring.datasource.url";
+    private static final String SPRING_USERNAME_KEY = "spring.datasource.username";
+    private static final String SPRING_PASSWORD_KEY = "spring.datasource.password";
 
     @Override
     public void postProcessEnvironment(ConfigurableEnvironment environment, SpringApplication application) {
@@ -40,13 +43,16 @@ public class DatabaseUrlEnvironmentPostProcessor implements EnvironmentPostProce
 
         Map<String, Object> properties = new LinkedHashMap<>();
         properties.put(NORMALIZED_URL_KEY, normalized.url());
+        properties.put(SPRING_URL_KEY, normalized.url());
 
         if (isPresent(normalized.username())) {
             properties.put(NORMALIZED_USERNAME_KEY, normalized.username());
+            properties.put(SPRING_USERNAME_KEY, normalized.username());
         }
 
         if (isPresent(normalized.password())) {
             properties.put(NORMALIZED_PASSWORD_KEY, normalized.password());
+            properties.put(SPRING_PASSWORD_KEY, normalized.password());
         }
 
         environment.getPropertySources().addFirst(new MapPropertySource(PROPERTY_SOURCE_NAME, properties));
