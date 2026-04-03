@@ -103,6 +103,42 @@ class SessionControllerIntegrationTest {
     }
 
     @Test
+    void joiningSessionShouldCreateSystemTimelineMessage() throws Exception {
+        User mentor = createUser("mentor-timeline@example.com", Role.MENTOR);
+        User student = createUser("student-timeline@example.com", Role.STUDENT);
+        String createResponse = mockMvc.perform(post("/api/sessions")
+                        .header(HttpHeaders.AUTHORIZATION, bearerTokenFor(mentor))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new CreateSessionRequest(
+                                "Mock interview",
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                null
+                        ))))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        String sessionId = objectMapper.readTree(createResponse).get("id").asText();
+
+        mockMvc.perform(post("/api/sessions/{sessionId}/join", sessionId)
+                        .header(HttpHeaders.AUTHORIZATION, bearerTokenFor(student)))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/sessions/{sessionId}/messages", sessionId)
+                        .header(HttpHeaders.AUTHORIZATION, bearerTokenFor(mentor)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].messageKind").value("SYSTEM"))
+                .andExpect(jsonPath("$[0].content").value(org.hamcrest.Matchers.containsString("joined the room")));
+    }
+
+    @Test
     void studentShouldNotCreateMentorOnlySession() throws Exception {
         User student = createUser("student@example.com", Role.STUDENT);
 

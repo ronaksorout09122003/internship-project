@@ -104,6 +104,7 @@ export default function SessionRoomPage() {
     sessionId,
     token,
     currentUserId: user?.id ?? null,
+    currentUserDisplayName: user?.displayName ?? null,
     initialMessages: seedMessages,
     initialCode: seedCode,
     onSignal,
@@ -120,6 +121,20 @@ export default function SessionRoomPage() {
   useEffect(() => {
     signalHandlerRef.current = webRtc.handleSignal;
   }, [webRtc.handleSignal]);
+
+  useEffect(() => {
+    if (!session) {
+      return;
+    }
+
+    realtime.updatePresence(
+      {
+        activity: "reviewing",
+        isTyping: false
+      },
+      { immediate: true }
+    );
+  }, [session?.id, realtime.connectionState]);
 
   const hydrateRoom = useEffectEvent(async () => {
     if (!user || !token) {
@@ -346,6 +361,26 @@ export default function SessionRoomPage() {
     toast.success("Code snapshot downloaded.");
   };
 
+  const handleShareCodeSelection = (payload: {
+    code: string;
+    title: string;
+    language: Session["language"];
+  }) => {
+    const sent = realtime.sendChat({
+      content: `Shared ${payload.title.toLowerCase()} for discussion.`,
+      snippetTitle: payload.title,
+      snippetLanguage: getLanguageLabel(payload.language),
+      snippetCode: payload.code
+    });
+
+    if (!sent) {
+      toast.error("Realtime chat is reconnecting. Try sharing the snippet again in a moment.");
+      return;
+    }
+
+    toast.success("Code snippet shared to the session chat.");
+  };
+
   const handleRestoreLocalCodeDraft = () => {
     if (!sessionId || !localCodeRecovery) {
       return;
@@ -527,12 +562,13 @@ export default function SessionRoomPage() {
   }
 
   const sessionEnded = session.status === "ENDED";
+  const remotePresence = realtime.presence;
   const chatSendDisabled =
     sessionEnded || realtime.connectionState !== "connected";
   const chatStatusMessage = sessionEnded
     ? "This session has ended. Messages are read-only."
     : realtime.connectionState === "connected"
-      ? "Shift + Enter for a new line"
+      ? "Shift + Enter for a new line. Share editor selections straight into the conversation."
       : "Keep typing while reconnecting. Your draft stays here until send is available again.";
   const canMentorControlRemoteMedia =
     user.role === "MENTOR" && Boolean(session.student);
@@ -581,6 +617,7 @@ export default function SessionRoomPage() {
               onLeaveCall={webRtc.leaveCall}
               onToggleMicrophone={webRtc.toggleMicrophone}
               onToggleCamera={webRtc.toggleCamera}
+              onToggleScreenShare={webRtc.toggleScreenShare}
               onSetRemoteMicrophoneEnabled={webRtc.setRemoteMicrophoneEnabled}
               onSetRemoteCameraEnabled={webRtc.setRemoteCameraEnabled}
             />
@@ -588,6 +625,7 @@ export default function SessionRoomPage() {
               session={session}
               currentUserId={user.id}
               connectionState={realtime.connectionState}
+              presence={remotePresence}
               isEndingSession={isEndingSession}
               onCopyLink={handleCopyLink}
               onDownloadCalendar={handleDownloadCalendar}
@@ -610,10 +648,13 @@ export default function SessionRoomPage() {
               onDownloadCode={handleDownloadCode}
               language={session.language}
               templateKey={session.templateKey}
+              remotePresence={remotePresence}
               canManageWorkspace={user.role === "MENTOR" && !sessionEnded}
               isSavingWorkspaceSettings={isSavingWorkspace}
               onPersistLanguage={handlePersistLanguage}
               onLoadStarterTemplate={handleLoadStarterTemplate}
+              onPresenceUpdate={realtime.updatePresence}
+              onShareSelection={handleShareCodeSelection}
               disabled={sessionEnded}
             />
             <ChatPanel
@@ -625,6 +666,19 @@ export default function SessionRoomPage() {
               statusMessage={chatStatusMessage}
               onDraftChange={setChatDraft}
               onSend={sendChatMessage}
+              onTypingChange={(isTyping) =>
+                realtime.updatePresence(
+                  isTyping
+                    ? {
+                        activity: "chatting",
+                        isTyping: true
+                      }
+                    : {
+                        isTyping: false
+                      },
+                  { immediate: !isTyping }
+                )
+              }
             />
           </section>
 

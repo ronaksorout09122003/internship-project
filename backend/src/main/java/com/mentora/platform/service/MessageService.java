@@ -7,6 +7,7 @@ import com.mentora.platform.dto.code.CodeSyncResponse;
 import com.mentora.platform.dto.signal.SignalRequest;
 import com.mentora.platform.dto.signal.SignalResponse;
 import com.mentora.platform.entity.ChatMessage;
+import com.mentora.platform.entity.ChatMessageKind;
 import com.mentora.platform.entity.CodeSnapshot;
 import com.mentora.platform.entity.MentoringSession;
 import com.mentora.platform.entity.User;
@@ -55,12 +56,22 @@ public class MessageService {
         MentoringSession session = sessionService.getSessionEntity(request.sessionId());
         sessionService.ensureParticipant(session, senderId);
         User sender = userService.getEntityById(senderId);
+        String content = trimToNull(request.content());
+        String snippetCode = normalizeSnippetCode(request.snippetCode());
+
+        if (content == null && snippetCode == null) {
+            throw new IllegalArgumentException("Message content or snippet is required");
+        }
 
         ChatMessage message = new ChatMessage();
         message.setId(UUID.randomUUID());
         message.setSession(session);
         message.setSender(sender);
-        message.setContent(request.content().trim());
+        message.setMessageKind(snippetCode != null ? ChatMessageKind.CODE_SNIPPET : ChatMessageKind.CHAT);
+        message.setContent(content != null ? content : "Shared a code snippet");
+        message.setSnippetTitle(trimToNull(request.snippetTitle()));
+        message.setSnippetLanguage(trimToNull(request.snippetLanguage()));
+        message.setSnippetCode(snippetCode);
 
         return messageMapper.toResponse(chatMessageRepository.save(message));
     }
@@ -95,5 +106,29 @@ public class MessageService {
                 request.payload() == null ? Map.of() : request.payload(),
                 Instant.now()
         );
+    }
+
+    private String trimToNull(String value) {
+        if (value == null) {
+            return null;
+        }
+
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private String normalizeSnippetCode(String value) {
+        if (value == null) {
+            return null;
+        }
+
+        String normalized = value.replace("\r\n", "\n");
+        while (normalized.startsWith("\n")) {
+            normalized = normalized.substring(1);
+        }
+        while (normalized.endsWith("\n")) {
+            normalized = normalized.substring(0, normalized.length() - 1);
+        }
+        return normalized.isBlank() ? null : normalized;
     }
 }

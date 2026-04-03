@@ -7,5 +7,6 @@ public enum SignalType {
     ICE_CANDIDATE,
     HANGUP,
     MEDIA_STATE,
-    MEDIA_CONTROL
+    MEDIA_CONTROL,
+    PRESENCE_STATE
 }

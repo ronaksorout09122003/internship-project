@@ -2,6 +2,8 @@ package com.mentora.platform.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
@@ -26,6 +28,19 @@ public class ChatMessage {
 
     @Column(nullable = false, columnDefinition = "TEXT")
     private String content;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "message_kind", nullable = false, length = 30)
+    private ChatMessageKind messageKind = ChatMessageKind.CHAT;
+
+    @Column(name = "snippet_title", length = 160)
+    private String snippetTitle;
+
+    @Column(name = "snippet_language", length = 30)
+    private String snippetLanguage;
+
+    @Column(name = "snippet_code", columnDefinition = "TEXT")
+    private String snippetCode;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -67,6 +82,38 @@ public class ChatMessage {
 
     public void setContent(String content) {
         this.content = content;
+    }
+
+    public ChatMessageKind getMessageKind() {
+        return messageKind;
+    }
+
+    public void setMessageKind(ChatMessageKind messageKind) {
+        this.messageKind = messageKind;
+    }
+
+    public String getSnippetTitle() {
+        return snippetTitle;
+    }
+
+    public void setSnippetTitle(String snippetTitle) {
+        this.snippetTitle = snippetTitle;
+    }
+
+    public String getSnippetLanguage() {
+        return snippetLanguage;
+    }
+
+    public void setSnippetLanguage(String snippetLanguage) {
+        this.snippetLanguage = snippetLanguage;
+    }
+
+    public String getSnippetCode() {
+        return snippetCode;
+    }
+
+    public void setSnippetCode(String snippetCode) {
+        this.snippetCode = snippetCode;
     }
 
     public Instant getCreatedAt() {

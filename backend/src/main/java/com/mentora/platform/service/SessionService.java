@@ -4,6 +4,8 @@ import com.mentora.platform.dto.session.CreateSessionRequest;
 import com.mentora.platform.dto.session.SessionResponse;
 import com.mentora.platform.dto.session.SessionSummaryResponse;
 import com.mentora.platform.dto.session.UpdateSessionRequest;
+import com.mentora.platform.entity.ChatMessage;
+import com.mentora.platform.entity.ChatMessageKind;
 import com.mentora.platform.entity.CodeSnapshot;
 import com.mentora.platform.entity.MentoringSession;
 import com.mentora.platform.entity.Role;
@@ -14,15 +16,20 @@ import com.mentora.platform.entity.User;
 import com.mentora.platform.exception.ConflictException;
 import com.mentora.platform.exception.ForbiddenException;
 import com.mentora.platform.exception.NotFoundException;
+import com.mentora.platform.mapper.MessageMapper;
 import com.mentora.platform.mapper.SessionMapper;
+import com.mentora.platform.repository.ChatMessageRepository;
 import com.mentora.platform.repository.MentoringSessionRepository;
 import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,20 +40,30 @@ public class SessionService {
     private static final String SESSION_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
     private final MentoringSessionRepository sessionRepository;
+    private final ChatMessageRepository chatMessageRepository;
     private final CodeSnapshotService codeSnapshotService;
+    private final MessageMapper messageMapper;
     private final SessionMapper sessionMapper;
     private final UserService userService;
+    private final SimpMessagingTemplate messagingTemplate;
 
     public SessionService(
             MentoringSessionRepository sessionRepository,
+            ChatMessageRepository chatMessageRepository,
             CodeSnapshotService codeSnapshotService,
+            MessageMapper messageMapper,
             SessionMapper sessionMapper,
-            UserService userService
+            UserService userService,
+            @Lazy
+            SimpMessagingTemplate messagingTemplate
     ) {
         this.sessionRepository = sessionRepository;
+        this.chatMessageRepository = chatMessageRepository;
         this.codeSnapshotService = codeSnapshotService;
+        this.messageMapper = messageMapper;
         this.sessionMapper = sessionMapper;
         this.userService = userService;
+        this.messagingTemplate = messagingTemplate;
     }
 
     @Transactional
@@ -126,6 +143,11 @@ public class SessionService {
         session.setStudent(student);
         session.setStatus(SessionStatus.ACTIVE);
         CodeSnapshot snapshot = codeSnapshotService.findBySessionId(session.getId()).orElse(null);
+        publishSystemMessage(
+                session,
+                student,
+                "%s joined the room. The session is now live.".formatted(student.getDisplayName())
+        );
 
         LOGGER.info("Student {} joined session {}", student.getEmail(), session.getId());
         return sessionMapper.toResponse(session, snapshot);
@@ -139,6 +161,11 @@ public class SessionService {
         }
 
         session.setStatus(SessionStatus.ENDED);
+        publishSystemMessage(
+                session,
+                session.getMentor(),
+                "%s ended the session. Collaboration is now read-only.".formatted(session.getMentor().getDisplayName())
+        );
         LOGGER.info("Session {} ended by mentor {}", sessionId, requesterId);
         CodeSnapshot snapshot = codeSnapshotService.findBySessionId(sessionId).orElse(null);
         return sessionMapper.toResponse(session, snapshot);
@@ -168,6 +195,9 @@ public class SessionService {
         ensureParticipant(session, requesterId);
 
         boolean isMentor = session.getMentor().getId().equals(requesterId);
+        SessionLanguage previousLanguage = session.getLanguage();
+        String previousTemplateKey = session.getTemplateKey();
+        Instant previousFeedbackSubmittedAt = session.getFeedbackSubmittedAt();
         boolean touched = false;
 
         if (isMentor) {
@@ -185,6 +215,12 @@ public class SessionService {
         if (!touched) {
             CodeSnapshot currentSnapshot = codeSnapshotService.findBySessionId(sessionId).orElse(null);
             return sessionMapper.toResponse(session, currentSnapshot);
+        }
+
+        if (isMentor) {
+            publishMentorWorkspaceEvents(session, previousLanguage, previousTemplateKey, request);
+        } else if (session.getStudent() != null) {
+            publishStudentFeedbackEvent(session, previousFeedbackSubmittedAt);
         }
 
         LOGGER.info("Session {} updated by participant {}", sessionId, requesterId);
@@ -426,6 +462,66 @@ public class SessionService {
         return touched;
     }
 
+    private void publishMentorWorkspaceEvents(
+            MentoringSession session,
+            SessionLanguage previousLanguage,
+            String previousTemplateKey,
+            UpdateSessionRequest request
+    ) {
+        if (request.language() != null && previousLanguage != session.getLanguage()) {
+            publishSystemMessage(
+                    session,
+                    session.getMentor(),
+                    "%s switched the editor language to %s."
+                            .formatted(session.getMentor().getDisplayName(), humanizeEnumName(session.getLanguage().name()))
+            );
+        }
+
+        String normalizedPreviousTemplate = normalizeTemplateKey(previousTemplateKey);
+        String normalizedCurrentTemplate = normalizeTemplateKey(session.getTemplateKey());
+        if (request.templateKey() != null && !Objects.equals(normalizedPreviousTemplate, normalizedCurrentTemplate)) {
+            publishSystemMessage(
+                    session,
+                    session.getMentor(),
+                    "%s loaded the %s starter template."
+                            .formatted(session.getMentor().getDisplayName(), humanizeTemplateKey(normalizedCurrentTemplate))
+            );
+        }
+    }
+
+    private void publishStudentFeedbackEvent(MentoringSession session, Instant previousFeedbackSubmittedAt) {
+        String feedbackAction = previousFeedbackSubmittedAt == null ? "submitted" : "updated";
+        String ratingCopy = session.getStudentRating() != null
+                ? " with a %d/5 rating".formatted(session.getStudentRating())
+                : "";
+
+        publishSystemMessage(
+                session,
+                session.getStudent(),
+                "%s %s session feedback%s."
+                        .formatted(session.getStudent().getDisplayName(), feedbackAction, ratingCopy)
+        );
+    }
+
+    private void publishSystemMessage(MentoringSession session, User actor, String content) {
+        if (actor == null || content == null || content.isBlank()) {
+            return;
+        }
+
+        ChatMessage message = new ChatMessage();
+        message.setId(UUID.randomUUID());
+        message.setSession(session);
+        message.setSender(actor);
+        message.setMessageKind(ChatMessageKind.SYSTEM);
+        message.setContent(content.trim());
+
+        ChatMessage savedMessage = chatMessageRepository.save(message);
+        messagingTemplate.convertAndSend(
+                "/topic/sessions/" + session.getId() + "/chat",
+                messageMapper.toResponse(savedMessage)
+        );
+    }
+
     private boolean hasMentorOnlyUpdates(UpdateSessionRequest request) {
         return request.topic() != null
                 || request.agenda() != null
@@ -459,6 +555,10 @@ public class SessionService {
 
     private String humanizeTemplateKey(String templateKey) {
         return normalizeTemplateKey(templateKey).replace('_', ' ').toLowerCase(Locale.ROOT);
+    }
+
+    private String humanizeEnumName(String value) {
+        return value.replace('_', ' ').toLowerCase(Locale.ROOT);
     }
 
     private String trimToNull(String value) {

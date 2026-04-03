@@ -4,6 +4,8 @@ import type { RefObject } from "react";
 import {
   Mic,
   MicOff,
+  Monitor,
+  MonitorOff,
   PhoneOff,
   RefreshCcw,
   Video,
@@ -27,6 +29,7 @@ interface VideoPanelProps {
   onLeaveCall: () => void;
   onToggleMicrophone: () => void;
   onToggleCamera: () => void;
+  onToggleScreenShare: () => void;
   onSetRemoteMicrophoneEnabled: (enabled: boolean) => void;
   onSetRemoteCameraEnabled: (enabled: boolean) => void;
 }
@@ -45,20 +48,26 @@ export function VideoPanel({
   onLeaveCall,
   onToggleMicrophone,
   onToggleCamera,
+  onToggleScreenShare,
   onSetRemoteMicrophoneEnabled,
   onSetRemoteCameraEnabled
 }: VideoPanelProps) {
   const remoteMicrophoneEnabled = remoteMediaState?.isMicrophoneEnabled !== false;
   const remoteCameraEnabled = remoteMediaState?.isCameraEnabled !== false;
+  const remoteScreenSharing = remoteMediaState?.isScreenSharing === true;
   const showRemotePlaceholder =
-    callState !== "connected" || remoteCameraEnabled === false;
+    callState !== "connected" || (!remoteCameraEnabled && !remoteScreenSharing);
 
   const localMicrophoneActionLabel = localMediaState.isMicrophoneEnabled
     ? "Mute mic"
     : "Unmute mic";
-  const localCameraActionLabel = localMediaState.isCameraEnabled
-    ? "Stop camera"
-    : "Start camera";
+  const localCameraActionLabel = localMediaState.isScreenSharing
+    ? localMediaState.isCameraEnabled
+      ? "Pause share"
+      : "Resume share"
+    : localMediaState.isCameraEnabled
+      ? "Stop camera"
+      : "Start camera";
   const remoteMicrophoneActionLabel = remoteMicrophoneEnabled
     ? "Mute student"
     : "Unmute student";
@@ -103,6 +112,18 @@ export function VideoPanel({
             )}
             {localCameraActionLabel}
           </Button>
+          <Button
+            variant={localMediaState.isScreenSharing ? "secondary" : "ghost"}
+            onClick={onToggleScreenShare}
+            disabled={controlsDisabled}
+          >
+            {localMediaState.isScreenSharing ? (
+              <MonitorOff className="mr-2 h-4 w-4" />
+            ) : (
+              <Monitor className="mr-2 h-4 w-4" />
+            )}
+            {localMediaState.isScreenSharing ? "Stop sharing" : "Share screen"}
+          </Button>
           <Button variant="secondary" onClick={onReconnect} disabled={controlsDisabled}>
             <RefreshCcw className="mr-2 h-4 w-4" />
             Reconnect
@@ -126,7 +147,9 @@ export function VideoPanel({
           <p className="mt-1">
             {localMediaState.isMicrophoneBlockedByMentor || localMediaState.isCameraBlockedByMentor
               ? "Some device controls are currently managed by the mentor."
-              : "Mute your mic, pause your camera, or leave the call without leaving the room."}
+              : localMediaState.isScreenSharing
+                ? "Your screen is live in the room. You can pause the outgoing feed or stop sharing at any time."
+                : "Mute your mic, pause your camera, share your screen, or leave the call without leaving the room."}
           </p>
         </div>
         <div className="rounded-3xl bg-white/80 px-4 py-3 text-sm text-slate-600 ring-1 ring-slate-200">
@@ -135,8 +158,8 @@ export function VideoPanel({
           </p>
           <p className="mt-1">
             {canControlRemoteMedia
-              ? "You can mute the student or pause their camera directly from this panel."
-              : "The room will reflect the other participant's microphone and camera state in realtime."}
+              ? "You can mute the student or pause their camera directly from this panel while still seeing screen sharing status in realtime."
+              : "The room reflects the other participant's microphone, camera, and screen-sharing state in realtime."}
           </p>
         </div>
       </div>
@@ -148,12 +171,17 @@ export function VideoPanel({
               <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-white backdrop-blur">
                 {remoteParticipantLabel}
               </span>
+              {remoteScreenSharing ? (
+                <span className="rounded-full bg-sky-500/20 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-sky-100 ring-1 ring-sky-300/30">
+                  Screen sharing
+                </span>
+              ) : null}
               {!remoteMicrophoneEnabled ? (
                 <span className="rounded-full bg-rose-500/20 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-rose-100 ring-1 ring-rose-300/30">
                   Mic muted
                 </span>
               ) : null}
-              {!remoteCameraEnabled ? (
+              {!remoteCameraEnabled && !remoteScreenSharing ? (
                 <span className="rounded-full bg-amber-400/20 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-amber-100 ring-1 ring-amber-300/30">
                   Camera off
                 </span>
@@ -217,6 +245,11 @@ export function VideoPanel({
               <span className="rounded-full bg-white/85 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-700 ring-1 ring-slate-200">
                 You
               </span>
+              {localMediaState.isScreenSharing ? (
+                <span className="rounded-full bg-white/85 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-sky-700 ring-1 ring-sky-200">
+                  Screen sharing
+                </span>
+              ) : null}
               {!localMediaState.isMicrophoneEnabled ? (
                 <span className="rounded-full bg-white/85 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-rose-700 ring-1 ring-rose-200">
                   {localMediaState.isMicrophoneBlockedByMentor
@@ -224,7 +257,7 @@ export function VideoPanel({
                     : "Mic muted"}
                 </span>
               ) : null}
-              {!localMediaState.isCameraEnabled ? (
+              {!localMediaState.isCameraEnabled && !localMediaState.isScreenSharing ? (
                 <span className="rounded-full bg-white/85 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-amber-700 ring-1 ring-amber-200">
                   {localMediaState.isCameraBlockedByMentor
                     ? "Camera paused by mentor"
@@ -239,7 +272,7 @@ export function VideoPanel({
               playsInline
               className="h-full w-full rounded-[1.4rem] object-cover"
             />
-            {!localMediaState.isCameraEnabled ? (
+            {!localMediaState.isCameraEnabled && !localMediaState.isScreenSharing ? (
               <div className="absolute flex flex-col items-center gap-3 px-6 text-center text-slate-500">
                 <VideoOff className="h-10 w-10" />
                 <p className="text-sm font-medium">

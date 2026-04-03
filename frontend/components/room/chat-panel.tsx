@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { SendHorizontal } from "lucide-react";
+import { Copy, SendHorizontal } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { formatRelativeTime } from "@/utils/format";
 import { cn } from "@/utils/cn";
@@ -16,6 +17,7 @@ interface ChatPanelProps {
   statusMessage?: string;
   onDraftChange: (value: string) => void;
   onSend: (message: string) => boolean;
+  onTypingChange?: (isTyping: boolean) => void;
 }
 
 export function ChatPanel({
@@ -26,7 +28,8 @@ export function ChatPanel({
   sendDisabled = false,
   statusMessage,
   onDraftChange,
-  onSend
+  onSend,
+  onTypingChange
 }: ChatPanelProps) {
   const endOfMessagesRef = useRef<HTMLDivElement | null>(null);
 
@@ -46,6 +49,16 @@ export function ChatPanel({
     const sent = onSend(trimmedDraft);
     if (sent) {
       onDraftChange("");
+      onTypingChange?.(false);
+    }
+  };
+
+  const copySnippet = async (snippetCode: string) => {
+    try {
+      await navigator.clipboard.writeText(snippetCode);
+      toast.success("Snippet copied to your clipboard.");
+    } catch {
+      toast.error("Unable to copy the snippet right now.");
     }
   };
 
@@ -74,6 +87,24 @@ export function ChatPanel({
 
         {messages.map((message) => {
           const ownMessage = message.senderId === currentUserId;
+
+          if (message.messageKind === "SYSTEM") {
+            return (
+              <div
+                key={message.id}
+                className="mx-auto max-w-[92%] rounded-3xl border border-emerald-200 bg-emerald-50/90 px-4 py-3 text-center text-sm text-emerald-900"
+              >
+                <p className="font-semibold uppercase tracking-[0.18em] text-emerald-700">
+                  Timeline update
+                </p>
+                <p className="mt-2 leading-6">{message.content}</p>
+                <p className="mt-2 text-xs text-emerald-700/80">
+                  {formatRelativeTime(message.createdAt)}
+                </p>
+              </div>
+            );
+          }
+
           return (
             <div
               key={message.id}
@@ -92,7 +123,45 @@ export function ChatPanel({
                   {formatRelativeTime(message.createdAt)}
                 </span>
               </div>
-              <p className="text-sm leading-6">{message.content}</p>
+
+              {message.content &&
+              !(message.messageKind === "CODE_SNIPPET" && message.content === "Shared a code snippet") ? (
+                <p className="text-sm leading-6">{message.content}</p>
+              ) : null}
+
+              {message.messageKind === "CODE_SNIPPET" && message.snippetCode ? (
+                <div
+                  className={cn(
+                    "mt-3 rounded-[1.4rem] p-4",
+                    ownMessage
+                      ? "bg-white/8 ring-1 ring-white/12"
+                      : "bg-slate-950 text-slate-50"
+                  )}
+                >
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] opacity-80">
+                        {message.snippetTitle ?? "Code snippet"}
+                      </p>
+                      <p className="mt-1 text-xs opacity-70">
+                        {message.snippetLanguage ?? "Shared from the editor"}
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant={ownMessage ? "ghost" : "secondary"}
+                      className="px-3 py-2 text-xs"
+                      onClick={() => void copySnippet(message.snippetCode!)}
+                    >
+                      <Copy className="mr-2 h-3.5 w-3.5" />
+                      Copy
+                    </Button>
+                  </div>
+                  <pre className="overflow-x-auto whitespace-pre-wrap rounded-[1.2rem] bg-black/20 px-4 py-3 text-xs leading-6">
+                    <code>{message.snippetCode}</code>
+                  </pre>
+                </div>
+              ) : null}
             </div>
           );
         })}
@@ -113,7 +182,11 @@ export function ChatPanel({
           placeholder="Send a note, hint, or explanation..."
           value={draft}
           disabled={draftDisabled}
-          onChange={(event) => onDraftChange(event.target.value)}
+          onChange={(event) => {
+            const nextValue = event.target.value;
+            onDraftChange(nextValue);
+            onTypingChange?.(nextValue.trim().length > 0);
+          }}
           onKeyDown={(event) => {
             if (event.key === "Enter" && !event.shiftKey) {
               event.preventDefault();

@@ -1,18 +1,28 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Editor from "@monaco-editor/react";
-import { Copy, Download, RotateCcw, Sparkles, X } from "lucide-react";
+import { Copy, Download, RotateCcw, SendHorizontal, Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StatusPill } from "@/components/ui/status-pill";
+import type {
+  ParticipantPresence,
+  PresenceDraft,
+  RealtimeConnectionState
+} from "@/types/realtime";
 import type { SessionLanguage } from "@/types/session";
 import {
   SESSION_LANGUAGE_OPTIONS,
   SESSION_TEMPLATE_OPTIONS,
   getLanguageMonacoValue
 } from "@/utils/session-options";
-import type { RealtimeConnectionState } from "@/types/realtime";
 import { formatRelativeTime } from "@/utils/format";
+
+interface SharedSnippetPayload {
+  code: string;
+  title: string;
+  language: SessionLanguage;
+}
 
 interface CodeEditorPanelProps {
   code: string;
@@ -27,10 +37,13 @@ interface CodeEditorPanelProps {
   onDownloadCode: () => void;
   language: SessionLanguage;
   templateKey: string;
+  remotePresence?: ParticipantPresence[];
   canManageWorkspace?: boolean;
   isSavingWorkspaceSettings?: boolean;
   onPersistLanguage: (language: SessionLanguage) => void;
   onLoadStarterTemplate: (templateKey: string) => void;
+  onPresenceUpdate?: (update: PresenceDraft, options?: { immediate?: boolean }) => void;
+  onShareSelection?: (payload: SharedSnippetPayload) => void;
   disabled?: boolean;
 }
 
@@ -47,14 +60,22 @@ export function CodeEditorPanel({
   onDownloadCode,
   language,
   templateKey,
+  remotePresence = [],
   canManageWorkspace = false,
   isSavingWorkspaceSettings = false,
   onPersistLanguage,
   onLoadStarterTemplate,
+  onPresenceUpdate,
+  onShareSelection,
   disabled = false
 }: CodeEditorPanelProps) {
   const [selectedLanguage, setSelectedLanguage] = useState<SessionLanguage>(language);
   const [selectedTemplate, setSelectedTemplate] = useState(templateKey);
+  const [selectedSnippet, setSelectedSnippet] = useState<SharedSnippetPayload | null>(null);
+  const editorRef = useRef<any>(null);
+  const monacoRef = useRef<any>(null);
+  const decorationIdsRef = useRef<string[]>([]);
+  const disposablesRef = useRef<Array<{ dispose: () => void }>>([]);
 
   useEffect(() => {
     setSelectedLanguage(language);
@@ -64,10 +85,122 @@ export function CodeEditorPanel({
     setSelectedTemplate(templateKey);
   }, [templateKey]);
 
+  useEffect(() => {
+    return () => {
+      disposablesRef.current.forEach((disposable) => disposable.dispose());
+      disposablesRef.current = [];
+    };
+  }, []);
+
+  useEffect(() => {
+    const editor = editorRef.current;
+    const monaco = monacoRef.current;
+    const model = editor?.getModel?.();
+
+    if (!editor || !monaco || !model) {
+      return;
+    }
+
+    const lineCount = model.getLineCount();
+    const clampLine = (value: number | null) =>
+      value == null ? null : Math.min(Math.max(value, 1), lineCount);
+    const clampColumn = (line: number, value: number | null) =>
+      Math.min(Math.max(value ?? 1, 1), model.getLineMaxColumn(line));
+
+    const nextDecorations = remotePresence.flatMap((presence) => {
+      const line = clampLine(presence.cursorLine);
+      if (!line) {
+        return [];
+      }
+
+      const roleClass = presence.senderRole === "MENTOR" ? "mentor" : "student";
+      const decorations: Array<{ range: any; options: any }> = [
+        {
+          range: new monaco.Range(line, 1, line, model.getLineMaxColumn(line)),
+          options: {
+            isWholeLine: true,
+            className: `remote-presence-line-${roleClass}`
+          }
+        }
+      ];
+
+      const startLine = clampLine(presence.selectionStartLine);
+      const endLine = clampLine(presence.selectionEndLine);
+
+      if (startLine && endLine) {
+        const startColumn = clampColumn(startLine, presence.selectionStartColumn);
+        const endColumn = clampColumn(endLine, presence.selectionEndColumn);
+        const hasSelection =
+          startLine !== endLine || startColumn !== endColumn;
+
+        if (hasSelection) {
+          decorations.push({
+            range: new monaco.Range(startLine, startColumn, endLine, endColumn),
+            options: {
+              className: `remote-presence-selection-${roleClass}`
+            }
+          });
+        }
+      }
+
+      return decorations;
+    });
+
+    decorationIdsRef.current = editor.deltaDecorations(
+      decorationIdsRef.current,
+      nextDecorations
+    );
+  }, [code, remotePresence]);
+
+  const updateSelectedSnippet = (editor: any) => {
+    const selection = editor.getSelection?.();
+    const model = editor.getModel?.();
+
+    if (!selection || !model || selection.isEmpty()) {
+      setSelectedSnippet(null);
+      return;
+    }
+
+    const snippetCode = model.getValueInRange(selection).trimEnd();
+    if (!snippetCode.trim()) {
+      setSelectedSnippet(null);
+      return;
+    }
+
+    const title =
+      selection.startLineNumber === selection.endLineNumber
+        ? `Line ${selection.startLineNumber} excerpt`
+        : `Lines ${selection.startLineNumber}-${selection.endLineNumber} excerpt`;
+
+    setSelectedSnippet({
+      code: snippetCode,
+      title,
+      language
+    });
+  };
+
+  const emitEditorPresence = (editor: any, options?: { immediate?: boolean }) => {
+    const selection = editor.getSelection?.();
+
+    onPresenceUpdate?.(
+      {
+        activity: "editing",
+        cursorLine: selection?.endLineNumber ?? null,
+        cursorColumn: selection?.endColumn ?? null,
+        selectionStartLine: selection?.startLineNumber ?? null,
+        selectionStartColumn: selection?.startColumn ?? null,
+        selectionEndLine: selection?.endLineNumber ?? null,
+        selectionEndColumn: selection?.endColumn ?? null,
+        isTyping: false
+      },
+      options
+    );
+  };
+
   const statusCopy = disabled
     ? "This session has ended. The final code snapshot is now read-only."
     : connectionState === "connected"
-      ? "Changes are throttled and persisted to the session snapshot."
+      ? "Changes are throttled, synced live, and visible with collaborator presence overlays."
       : "You can keep editing locally while realtime reconnects. The latest draft will sync when the room is back.";
 
   return (
@@ -91,6 +224,14 @@ export function CodeEditorPanel({
             <Download className="mr-2 h-4 w-4" />
             Download
           </Button>
+          <Button
+            variant="ghost"
+            disabled={disabled || connectionState !== "connected" || !selectedSnippet || !onShareSelection}
+            onClick={() => selectedSnippet && onShareSelection?.(selectedSnippet)}
+          >
+            <SendHorizontal className="mr-2 h-4 w-4" />
+            Share selection
+          </Button>
         </div>
       </div>
 
@@ -106,6 +247,23 @@ export function CodeEditorPanel({
           {statusCopy}
         </span>
       </div>
+
+      {remotePresence.length > 0 ? (
+        <div className="mb-4 flex flex-wrap gap-2 rounded-[1.75rem] bg-slate-50/95 px-4 py-4 ring-1 ring-slate-200">
+          {remotePresence.map((presence) => (
+            <div
+              key={presence.senderId}
+              className="rounded-full bg-white px-3 py-2 text-xs font-semibold text-slate-700 ring-1 ring-slate-200"
+            >
+              {presence.displayName}{" "}
+              {presence.activity === "editing" && presence.cursorLine
+                ? `on line ${presence.cursorLine}`
+                : presence.activity}
+              {presence.isTyping ? " typing..." : ""}
+            </div>
+          ))}
+        </div>
+      ) : null}
 
       <div className="mb-4 grid gap-4 rounded-[1.75rem] bg-[linear-gradient(135deg,rgba(15,23,42,0.03),rgba(16,185,129,0.08))] p-4 ring-1 ring-white/70 lg:grid-cols-[1fr_1fr_auto_auto] lg:items-end">
         <label className="flex flex-col gap-2">
@@ -191,7 +349,32 @@ export function CodeEditorPanel({
           language={getLanguageMonacoValue(language)}
           theme="vs-light"
           value={code}
-          onChange={onChange}
+          onMount={(editor, monaco) => {
+            editorRef.current = editor;
+            monacoRef.current = monaco;
+            updateSelectedSnippet(editor);
+
+            disposablesRef.current.forEach((disposable) => disposable.dispose());
+            disposablesRef.current = [
+              editor.onDidFocusEditorText(() => {
+                onPresenceUpdate?.({ activity: "editing", isTyping: false }, { immediate: true });
+              }),
+              editor.onDidBlurEditorText(() => {
+                onPresenceUpdate?.({ activity: "reviewing", isTyping: false }, { immediate: true });
+              }),
+              editor.onDidChangeCursorSelection(() => {
+                updateSelectedSnippet(editor);
+                emitEditorPresence(editor);
+              })
+            ];
+          }}
+          onChange={(nextValue) => {
+            onChange(nextValue);
+            if (editorRef.current) {
+              updateSelectedSnippet(editorRef.current);
+              emitEditorPresence(editorRef.current);
+            }
+          }}
           options={{
             minimap: { enabled: false },
             fontSize: 14,

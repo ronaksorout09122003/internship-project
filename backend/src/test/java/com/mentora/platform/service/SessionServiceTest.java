@@ -3,9 +3,12 @@ package com.mentora.platform.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.mentora.platform.dto.session.CreateSessionRequest;
+import com.mentora.platform.entity.ChatMessage;
+import com.mentora.platform.entity.ChatMessageKind;
 import com.mentora.platform.entity.CodeSnapshot;
 import com.mentora.platform.entity.MentoringSession;
 import com.mentora.platform.entity.Role;
@@ -15,17 +18,21 @@ import com.mentora.platform.entity.SessionStatus;
 import com.mentora.platform.entity.User;
 import com.mentora.platform.exception.ConflictException;
 import com.mentora.platform.exception.ForbiddenException;
+import com.mentora.platform.mapper.MessageMapper;
 import com.mentora.platform.mapper.SessionMapper;
 import com.mentora.platform.mapper.UserMapper;
+import com.mentora.platform.repository.ChatMessageRepository;
 import com.mentora.platform.repository.MentoringSessionRepository;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
+import org.mockito.ArgumentCaptor;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 
 @ExtendWith(MockitoExtension.class)
 class SessionServiceTest {
@@ -34,10 +41,16 @@ class SessionServiceTest {
     private MentoringSessionRepository sessionRepository;
 
     @Mock
+    private ChatMessageRepository chatMessageRepository;
+
+    @Mock
     private CodeSnapshotService codeSnapshotService;
 
     @Mock
     private UserService userService;
+
+    @Mock
+    private SimpMessagingTemplate messagingTemplate;
 
     private SessionService sessionService;
 
@@ -45,9 +58,12 @@ class SessionServiceTest {
     void setUp() {
         sessionService = new SessionService(
                 sessionRepository,
+                chatMessageRepository,
                 codeSnapshotService,
+                new MessageMapper(),
                 new SessionMapper(new UserMapper()),
-                userService
+                userService,
+                messagingTemplate
         );
     }
 
@@ -76,12 +92,18 @@ class SessionServiceTest {
         when(userService.getEntityById(student.getId())).thenReturn(student);
         when(sessionRepository.findById(session.getId())).thenReturn(Optional.of(session));
         when(codeSnapshotService.findBySessionId(session.getId())).thenReturn(Optional.of(snapshot));
+        when(chatMessageRepository.save(any(ChatMessage.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         var response = sessionService.joinSession(session.getId(), student.getId());
 
         assertThat(response.status()).isEqualTo(SessionStatus.ACTIVE);
         assertThat(response.student()).isNotNull();
         assertThat(session.getStudent()).isEqualTo(student);
+
+        ArgumentCaptor<ChatMessage> timelineMessageCaptor = ArgumentCaptor.forClass(ChatMessage.class);
+        verify(chatMessageRepository).save(timelineMessageCaptor.capture());
+        assertThat(timelineMessageCaptor.getValue().getMessageKind()).isEqualTo(ChatMessageKind.SYSTEM);
+        assertThat(timelineMessageCaptor.getValue().getContent()).contains("joined the room");
     }
 
     @Test
