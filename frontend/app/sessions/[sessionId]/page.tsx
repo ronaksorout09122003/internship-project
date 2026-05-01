@@ -48,7 +48,7 @@ type CodeRecoveryDraft = { code: string; updatedAt: string | null } | null;
 export default function SessionRoomPage() {
   const params = useParams<{ sessionId: string }>();
   const router = useRouter();
-  const { token, user } = useAuth();
+  const { token, user, isLoading: isAuthLoading } = useAuth();
   const sessionId = params.sessionId;
   const [session, setSession] = useState<Session | null>(null);
   const [seedMessages, setSeedMessages] = useState<ChatMessage[]>([]);
@@ -186,8 +186,17 @@ export default function SessionRoomPage() {
   });
 
   useEffect(() => {
+    if (isAuthLoading) {
+      return;
+    }
+
+    if (!user || !token) {
+      setIsLoading(false);
+      return;
+    }
+
     void hydrateRoom();
-  }, [sessionId, token, user]);
+  }, [isAuthLoading, sessionId, token, user]);
 
   useEffect(() => {
     if (!session || !token) {
@@ -517,47 +526,55 @@ export default function SessionRoomPage() {
     return true;
   };
 
+  if (!user) {
+    return <AuthGuard>{null}</AuthGuard>;
+  }
+
   if (isLoading) {
     return (
-      <main className="page-shell flex min-h-screen items-center justify-center px-6 py-10">
-        <div className="card-surface rounded-[2rem] px-8 py-6 text-sm font-medium text-slate-600">
-          Loading session room...
-        </div>
-      </main>
+      <AuthGuard>
+        <main className="page-shell flex min-h-screen items-center justify-center px-6 py-10">
+          <div className="card-surface rounded-[2rem] px-8 py-6 text-sm font-medium text-slate-600">
+            Loading session room...
+          </div>
+        </main>
+      </AuthGuard>
     );
   }
 
-  if (pageError || !session || !user) {
+  if (pageError || !session) {
     return (
-      <main className="page-shell flex min-h-screen items-center justify-center px-6 py-10">
-        <section className="card-surface soft-appear w-full max-w-2xl rounded-[2rem] p-10 text-center">
-          <div className="mb-8 flex justify-center">
-            <BrandMark />
-          </div>
-          <p className="mb-3 text-sm font-semibold uppercase tracking-[0.3em] text-slate-500">
-            {pageError === "forbidden"
-              ? "Private room"
-              : pageError === "not-found"
-                ? "Missing room"
-                : "Load error"}
-          </p>
-          <h1 className="display-font text-4xl font-bold text-slate-950">
-            {pageError === "forbidden"
-              ? "You are not a participant in this room."
-              : pageError === "not-found"
-                ? "This session could not be found."
-                : "We could not open the collaboration room."}
-          </h1>
-          <p className="mt-4 text-base text-slate-600">
-            {pageErrorMessage ?? "Try again from the dashboard or verify the shared link."}
-          </p>
-          <div className="mt-8 flex justify-center gap-3">
-            <Link href="/dashboard">
-              <Button>Back to dashboard</Button>
-            </Link>
-          </div>
-        </section>
-      </main>
+      <AuthGuard>
+        <main className="page-shell flex min-h-screen items-center justify-center px-6 py-10">
+          <section className="card-surface soft-appear w-full max-w-2xl rounded-[2rem] p-10 text-center">
+            <div className="mb-8 flex justify-center">
+              <BrandMark />
+            </div>
+            <p className="mb-3 text-sm font-semibold uppercase tracking-[0.3em] text-slate-500">
+              {pageError === "forbidden"
+                ? "Private room"
+                : pageError === "not-found"
+                  ? "Missing room"
+                  : "Load error"}
+            </p>
+            <h1 className="display-font text-4xl font-bold text-slate-950">
+              {pageError === "forbidden"
+                ? "You are not a participant in this room."
+                : pageError === "not-found"
+                  ? "This session could not be found."
+                  : "We could not open the collaboration room."}
+            </h1>
+            <p className="mt-4 text-base text-slate-600">
+              {pageErrorMessage ?? "Try again from the dashboard or verify the shared link."}
+            </p>
+            <div className="mt-8 flex justify-center gap-3">
+              <Link href="/dashboard">
+                <Button>Back to dashboard</Button>
+              </Link>
+            </div>
+          </section>
+        </main>
+      </AuthGuard>
     );
   }
 

@@ -42,7 +42,7 @@ const statusFilters: Array<SessionStatus | "ALL"> = ["ALL", "ACTIVE", "CREATED",
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { logout, refreshUser, user } = useAuth();
+  const { logout, refreshUser, user, isLoading: isAuthLoading } = useAuth();
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [form, setForm] = useState({
@@ -87,16 +87,39 @@ export default function DashboardPage() {
   }, [user]);
 
   useEffect(() => {
+    if (isAuthLoading) {
+      return;
+    }
+
+    if (!user) {
+      setSessions([]);
+      setIsLoading(false);
+      return;
+    }
+
+    let isActive = true;
+
     void (async () => {
       try {
-        setSessions(await getMySessions());
+        const nextSessions = await getMySessions();
+        if (isActive) {
+          setSessions(nextSessions);
+        }
       } catch (error) {
-        toast.error(getApiErrorMessage(error, "Unable to load your sessions."));
+        if (isActive) {
+          toast.error(getApiErrorMessage(error, "Unable to load your sessions."));
+        }
       } finally {
-        setIsLoading(false);
+        if (isActive) {
+          setIsLoading(false);
+        }
       }
     })();
-  }, []);
+
+    return () => {
+      isActive = false;
+    };
+  }, [isAuthLoading, user]);
 
   useEffect(() => {
     const draft = getStoredDashboardDraft();
@@ -130,7 +153,13 @@ export default function DashboardPage() {
     setNotificationPermission(Notification.permission);
   }, []);
 
-  const refreshSessions = async () => setSessions(await getMySessions());
+  const refreshSessions = async () => {
+    if (!user) {
+      return;
+    }
+
+    setSessions(await getMySessions());
+  };
   const updateForm = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) =>
     setForm((current) => ({ ...current, [key]: value }));
   const updateProfileField = <K extends keyof typeof profile>(key: K, value: (typeof profile)[K]) =>
