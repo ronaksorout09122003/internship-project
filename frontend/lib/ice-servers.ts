@@ -1,3 +1,5 @@
+import type { RuntimeConfig } from "@/lib/runtime-config";
+
 function splitCsv(value: string | undefined) {
   return (value ?? "")
     .split(",")
@@ -5,11 +7,13 @@ function splitCsv(value: string | undefined) {
     .filter(Boolean);
 }
 
-export function buildIceServers(): RTCIceServer[] {
-  const stunUrls = splitCsv(process.env.NEXT_PUBLIC_STUN_URLS);
-  const turnUrls = splitCsv(process.env.NEXT_PUBLIC_TURN_URLS);
-  const turnUsername = process.env.NEXT_PUBLIC_TURN_USERNAME?.trim();
-  const turnCredential = process.env.NEXT_PUBLIC_TURN_CREDENTIAL?.trim();
+export function buildIceServers(runtimeConfig?: RuntimeConfig): RTCIceServer[] {
+  const stunUrls = runtimeConfig?.stunUrls ?? splitCsv(process.env.NEXT_PUBLIC_STUN_URLS);
+  const turnUrls = runtimeConfig?.turnUrls ?? splitCsv(process.env.NEXT_PUBLIC_TURN_URLS);
+  const turnUsername =
+    runtimeConfig?.turnUsername ?? process.env.NEXT_PUBLIC_TURN_USERNAME?.trim();
+  const turnCredential =
+    runtimeConfig?.turnCredential ?? process.env.NEXT_PUBLIC_TURN_CREDENTIAL?.trim();
 
   const servers: RTCIceServer[] = [];
 
