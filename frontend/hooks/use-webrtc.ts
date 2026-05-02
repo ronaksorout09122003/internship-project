@@ -2,6 +2,7 @@
 
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { buildIceServers } from "@/lib/ice-servers";
+import { getRuntimeConfig } from "@/lib/runtime-config";
 import type { User } from "@/types/auth";
 import type {
   ParticipantMediaState,
@@ -21,10 +22,6 @@ type CallState = "waiting" | "calling" | "connected" | "disconnected";
 type CreateOfferOptions = {
   force?: boolean;
   iceRestart?: boolean;
-};
-
-const rtcConfig: RTCConfiguration = {
-  iceServers: buildIceServers()
 };
 
 const DEFAULT_MEDIA_STATE: ParticipantMediaState = {
@@ -58,6 +55,7 @@ export function useWebRTC({
   const readySignalAtRef = useRef(0);
   const offerInFlightRef = useRef(false);
   const lastOfferAtRef = useRef(0);
+  const iceServersRef = useRef<RTCIceServer[]>(buildIceServers());
   const cameraTrackRef = useRef<MediaStreamTrack | null>(null);
   const screenTrackRef = useRef<MediaStreamTrack | null>(null);
   const screenStreamRef = useRef<MediaStream | null>(null);
@@ -190,7 +188,9 @@ export function useWebRTC({
       return peerConnectionRef.current;
     }
 
-    const connection = new RTCPeerConnection(rtcConfig);
+    const connection = new RTCPeerConnection({
+      iceServers: iceServersRef.current
+    });
     remoteStreamRef.current = new MediaStream();
     attachRemoteStream();
 
@@ -378,6 +378,13 @@ export function useWebRTC({
       }
 
       try {
+        const runtimeConfig = await getRuntimeConfig();
+        if (!active) {
+          return;
+        }
+
+        iceServersRef.current = buildIceServers(runtimeConfig);
+
         const stream = await navigator.mediaDevices.getUserMedia({
           audio: true,
           video: {

@@ -25,7 +25,7 @@ public class JwtService {
             @Value("${app.jwt.expiration-minutes}") long expirationMinutes
     ) {
         if (secret == null || secret.isBlank()) {
-            throw new IllegalStateException("JWT_SECRET is required. Set it in the environment or in backend/.env.");
+            throw new IllegalStateException("JWT_SECRET is required. Set it in the deployment environment, for example Railway Variables, or in backend/.env for local development.");
         }
 
         byte[] secretBytes = secret.startsWith("base64:")

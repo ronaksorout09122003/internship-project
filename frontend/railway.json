@@ -4,14 +4,22 @@
     "builder": "DOCKERFILE",
     "dockerfilePath": "Dockerfile",
     "watchPatterns": [
-      "src/**",
-      "pom.xml",
+      "app/**",
+      "components/**",
+      "hooks/**",
+      "lib/**",
+      "public/**",
+      "services/**",
+      "types/**",
+      "utils/**",
+      "package.json",
+      "package-lock.json",
+      "next.config.ts",
       "Dockerfile"
     ]
   },
   "deploy": {
-    "startCommand": "java -jar /app/app.jar",
-    "healthcheckPath": "/api/health",
+    "healthcheckPath": "/",
     "healthcheckTimeout": 300,
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 10

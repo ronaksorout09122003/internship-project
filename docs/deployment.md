@@ -134,6 +134,41 @@ Render officially offers a free Postgres plan, but it expires 30 days after crea
 
 Railway is still convenient technically, but its official pricing is now a one-time free trial with limited credits, so it is not the best no-cost showcase option anymore.
 
+If you deploy the backend on Railway anyway:
+
+1. Set the service Root Directory to `backend`.
+2. Confirm Railway detects [railway.json](../backend/railway.json) and [Dockerfile](../backend/Dockerfile).
+3. Add these variables in the Railway service `Variables` tab:
+
+```text
+JWT_SECRET=<generate-a-long-random-secret>
+JWT_EXPIRATION_MINUTES=180
+APP_CORS_ALLOWED_ORIGINS=https://your-frontend-project.vercel.app
+APP_FRONTEND_URL=https://your-frontend-project.vercel.app
+APP_SEED_DEMO_DATA=true
+SPRING_DATASOURCE_URL=<jdbc-url-from-neon-or-railway-postgres>
+SPRING_DATASOURCE_USERNAME=<database-username>
+SPRING_DATASOURCE_PASSWORD=<database-password>
+```
+
+Railway does not deploy your local `backend/.env` file, and `railway.json` is for build and deploy settings, not secrets. If `JWT_SECRET` is missing or shorter than 32 bytes, Spring exits during startup and Railway reports the `/api/health` check as service unavailable.
+
+For the frontend on Railway:
+
+1. Create a second Railway service with Root Directory set to `frontend`.
+2. Confirm Railway detects [railway.json](../frontend/railway.json) and [Dockerfile](../frontend/Dockerfile).
+3. Add these variables in the frontend service `Variables` tab:
+
+```text
+BACKEND_ORIGIN=https://your-backend-service.up.railway.app
+NEXT_PUBLIC_STUN_URLS=stun:stun.l.google.com:19302,stun:stun1.l.google.com:19302
+NEXT_PUBLIC_TURN_URLS=
+NEXT_PUBLIC_TURN_USERNAME=
+NEXT_PUBLIC_TURN_CREDENTIAL=
+```
+
+The frontend now reads `BACKEND_ORIGIN` at runtime and uses it for both REST API and realtime WebSocket URLs, so the browser no longer depends on baked `localhost` backend URLs in production.
+
 ## TURN for stronger WebRTC reliability
 
 For stronger real-world video reliability, configure a TURN server and set:

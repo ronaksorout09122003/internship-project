@@ -3,8 +3,8 @@
 import { Client } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
 import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
-import { WS_URL } from "@/lib/constants";
 import { useDebouncedCallback } from "@/hooks/use-debounced-callback";
+import { getRuntimeConfig } from "@/lib/runtime-config";
 import type {
   ChatMessage,
   CodeSyncMessage,
@@ -184,87 +184,108 @@ export function useSessionRealtime({
       return;
     }
 
+    let isActive = true;
+    let nextClient: Client | null = null;
+
     setConnectionState("connecting");
     setLastError(null);
 
-    const client = new Client({
-      reconnectDelay: 3000,
-      connectHeaders: {
-        Authorization: `Bearer ${token}`
-      },
-      webSocketFactory: () => new SockJS(WS_URL),
-      onConnect: () => {
-        setConnectionState("connected");
-        setLastError(null);
-
-        client.subscribe(`/topic/sessions/${sessionId}/chat`, (frame) => {
-          const nextMessage = JSON.parse(frame.body) as ChatMessage;
-          setMessages((current) =>
-            current.some((message) => message.id === nextMessage.id)
-              ? current
-              : [...current, nextMessage]
-          );
-        });
-
-        client.subscribe(`/topic/sessions/${sessionId}/code`, (frame) => {
-          const nextMessage = JSON.parse(frame.body) as CodeSyncMessage;
-          if (nextMessage.senderId === currentUserId) {
-            setLastCodeSyncedAt(nextMessage.updatedAt);
-            setIsCodeSyncPending(false);
-            pendingCodeSyncRef.current = false;
-            return;
-          }
-
-          codeRef.current = nextMessage.code;
-          setCode(nextMessage.code);
-          setLastCodeSyncedAt(nextMessage.updatedAt);
-        });
-
-        client.subscribe(`/topic/sessions/${sessionId}/signal`, (frame) => {
-          const nextSignal = JSON.parse(frame.body) as SignalMessage;
-          if (nextSignal.senderId === currentUserId) {
-            return;
-          }
-
-          if (nextSignal.signalType === "PRESENCE_STATE") {
-            const nextPresence = normalizePresenceSignal(nextSignal);
-            setPresenceByUserId((current) => ({
-              ...current,
-              [nextPresence.senderId]: nextPresence
-            }));
-            return;
-          }
-
-          handleSignalEvent(nextSignal);
-        });
-
-        if (pendingCodeSyncRef.current) {
-          publishCodeNow(codeRef.current);
+    void (async () => {
+      try {
+        const runtimeConfig = await getRuntimeConfig();
+        if (!isActive) {
+          return;
         }
 
-        publishPresenceNow(presenceStateRef.current);
-      },
-      onDisconnect: () => {
-        setConnectionState("disconnected");
-      },
-      onStompError: (frame) => {
-        setConnectionState("error");
-        setLastError(frame.headers.message ?? "Realtime channel error");
-      },
-      onWebSocketClose: () => {
-        setConnectionState("disconnected");
-      },
-      onWebSocketError: () => {
-        setConnectionState("error");
-        setLastError("WebSocket connection failed");
-      }
-    });
+        const client = new Client({
+          reconnectDelay: 3000,
+          connectHeaders: {
+            Authorization: `Bearer ${token}`
+          },
+          webSocketFactory: () => new SockJS(runtimeConfig.wsUrl),
+          onConnect: () => {
+            setConnectionState("connected");
+            setLastError(null);
 
-    clientRef.current = client;
-    client.activate();
+            client.subscribe(`/topic/sessions/${sessionId}/chat`, (frame) => {
+              const nextMessage = JSON.parse(frame.body) as ChatMessage;
+              setMessages((current) =>
+                current.some((message) => message.id === nextMessage.id)
+                  ? current
+                  : [...current, nextMessage]
+              );
+            });
+
+            client.subscribe(`/topic/sessions/${sessionId}/code`, (frame) => {
+              const nextMessage = JSON.parse(frame.body) as CodeSyncMessage;
+              if (nextMessage.senderId === currentUserId) {
+                setLastCodeSyncedAt(nextMessage.updatedAt);
+                setIsCodeSyncPending(false);
+                pendingCodeSyncRef.current = false;
+                return;
+              }
+
+              codeRef.current = nextMessage.code;
+              setCode(nextMessage.code);
+              setLastCodeSyncedAt(nextMessage.updatedAt);
+            });
+
+            client.subscribe(`/topic/sessions/${sessionId}/signal`, (frame) => {
+              const nextSignal = JSON.parse(frame.body) as SignalMessage;
+              if (nextSignal.senderId === currentUserId) {
+                return;
+              }
+
+              if (nextSignal.signalType === "PRESENCE_STATE") {
+                const nextPresence = normalizePresenceSignal(nextSignal);
+                setPresenceByUserId((current) => ({
+                  ...current,
+                  [nextPresence.senderId]: nextPresence
+                }));
+                return;
+              }
+
+              handleSignalEvent(nextSignal);
+            });
+
+            if (pendingCodeSyncRef.current) {
+              publishCodeNow(codeRef.current);
+            }
+
+            publishPresenceNow(presenceStateRef.current);
+          },
+          onDisconnect: () => {
+            setConnectionState("disconnected");
+          },
+          onStompError: (frame) => {
+            setConnectionState("error");
+            setLastError(frame.headers.message ?? "Realtime channel error");
+          },
+          onWebSocketClose: () => {
+            setConnectionState("disconnected");
+          },
+          onWebSocketError: () => {
+            setConnectionState("error");
+            setLastError("WebSocket connection failed");
+          }
+        });
+
+        nextClient = client;
+        clientRef.current = client;
+        client.activate();
+      } catch {
+        if (isActive) {
+          setConnectionState("error");
+          setLastError("Unable to load realtime configuration");
+        }
+      }
+    })();
 
     return () => {
-      void client.deactivate();
+      isActive = false;
+      if (nextClient) {
+        void nextClient.deactivate();
+      }
       clientRef.current = null;
     };
   }, [currentUserDisplayName, currentUserId, enabled, sessionId, token]);

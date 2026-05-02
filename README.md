@@ -410,6 +410,7 @@ The detailed walkthrough is in `docs/deployment.md`.
 
 - Render backend blueprint: [render.yaml](render.yaml)
 - Railway backend config: [backend/railway.json](backend/railway.json)
+- Railway frontend config: [frontend/railway.json](frontend/railway.json)
 - Vercel frontend config: [frontend/vercel.json](frontend/vercel.json)
 
 ## Known Assumptions
@@ -422,7 +423,9 @@ The detailed walkthrough is in `docs/deployment.md`.
 
 ## Troubleshooting
 
-- If the backend fails immediately, check that `JWT_SECRET` is at least 32 characters long.
+- If the backend fails immediately, check that `JWT_SECRET` is set in the hosting provider variables and is at least 32 characters long.
+- If Railway reports `/api/health` as service unavailable after a successful Docker build, open the deploy logs and verify `JWT_SECRET` plus database variables are present in the Railway service `Variables` tab. Railway does not deploy local `.env` files.
+- If the Railway frontend returns `502`, make sure the frontend service uses the `frontend` root directory and has `BACKEND_ORIGIN` set to the Railway backend URL. The frontend now reads its backend URL from Railway runtime variables instead of relying on baked `localhost` URLs.
 - If the frontend points to the wrong backend, verify `frontend/.env.local` and restart `npm run dev`.
 - If video does not connect, allow camera/microphone access, use `localhost` or HTTPS, and configure TURN credentials for stricter NAT networks.
 - If Docker frontend env values change, rebuild with `docker compose up --build`.
