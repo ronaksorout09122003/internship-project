@@ -204,7 +204,7 @@ export function CodeEditorPanel({
       : "You can keep editing locally while realtime reconnects. The latest draft will sync when the room is back.";
 
   return (
-    <section className="card-surface rounded-[2rem] p-5">
+    <section className="card-surface rounded-3xl p-5">
       <div className="mb-4 flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div>
           <p className="section-kicker">
@@ -235,7 +235,7 @@ export function CodeEditorPanel({
         </div>
       </div>
 
-      <div className="mb-4 flex flex-wrap items-center gap-3 rounded-3xl bg-white/75 px-4 py-3 text-xs text-slate-600 ring-1 ring-slate-200">
+      <div className="mb-4 flex flex-wrap items-center gap-3 rounded-2xl bg-white/75 px-4 py-3 text-xs text-slate-600 ring-1 ring-slate-200">
         <span className="font-semibold uppercase tracking-[0.18em] text-slate-500">
           {isCodeSyncPending
             ? "Sync pending"
@@ -249,7 +249,7 @@ export function CodeEditorPanel({
       </div>
 
       {remotePresence.length > 0 ? (
-        <div className="mb-4 flex flex-wrap gap-2 rounded-[1.75rem] bg-slate-50/95 px-4 py-4 ring-1 ring-slate-200">
+        <div className="mb-4 flex flex-wrap gap-2 rounded-2xl bg-slate-50/95 px-4 py-4 ring-1 ring-slate-200">
           {remotePresence.map((presence) => (
             <div
               key={presence.senderId}
@@ -265,13 +265,13 @@ export function CodeEditorPanel({
         </div>
       ) : null}
 
-      <div className="mb-4 grid gap-4 rounded-[1.75rem] bg-[linear-gradient(135deg,rgba(15,23,42,0.03),rgba(16,185,129,0.08))] p-4 ring-1 ring-white/70 lg:grid-cols-[1fr_1fr_auto_auto] lg:items-end">
+      <div className="mb-4 grid gap-4 rounded-2xl bg-[linear-gradient(135deg,rgba(15,23,42,0.03),rgba(20,184,166,0.08))] p-4 ring-1 ring-white/70 lg:grid-cols-[1fr_1fr_auto_auto] lg:items-end">
         <label className="flex flex-col gap-2">
           <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
             Language
           </span>
           <select
-            className="rounded-[1.3rem] border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
+            className="field-control px-4 py-3 text-sm"
             value={selectedLanguage}
             onChange={(event) => setSelectedLanguage(event.target.value as SessionLanguage)}
             disabled={!canManageWorkspace || disabled}
@@ -289,7 +289,7 @@ export function CodeEditorPanel({
             Starter
           </span>
           <select
-            className="rounded-[1.3rem] border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
+            className="field-control px-4 py-3 text-sm"
             value={selectedTemplate}
             onChange={(event) => setSelectedTemplate(event.target.value)}
             disabled={!canManageWorkspace || disabled}
@@ -323,7 +323,7 @@ export function CodeEditorPanel({
       </div>
 
       {recoveryDraftUpdatedAt ? (
-        <div className="mb-4 flex flex-col gap-3 rounded-3xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-900 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mb-4 flex flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-900 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="font-semibold">Browser recovery draft available</p>
             <p className="mt-1 text-amber-800">
@@ -343,7 +343,7 @@ export function CodeEditorPanel({
         </div>
       ) : null}
 
-      <div className="overflow-hidden rounded-[1.5rem] border border-slate-200">
+      <div className="overflow-hidden rounded-2xl border border-slate-200">
         <Editor
           height="560px"
           language={getLanguageMonacoValue(language)}

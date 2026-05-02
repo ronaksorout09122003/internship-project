@@ -34,13 +34,10 @@ Vercel and Render are simplest when both deploy from the same GitHub repository.
 
 1. Sign up at `https://console.neon.tech/`.
 2. Create a new project.
-3. In the Neon dashboard, copy:
-   - JDBC connection string
-   - Username
-   - Password
-4. Save them for the backend environment variables.
+3. In the Neon dashboard or CLI, copy the direct Postgres connection string for your app database.
+4. Save it for the backend environment variables.
 
-Use the JDBC URL that Neon shows in its dashboard. It already includes the safest connection details for hosted access.
+For this Spring Boot backend, use the direct Neon host, not the pooled PgBouncer host. The app accepts a standard `postgresql://...` `DATABASE_URL` and normalizes it for JDBC at startup.
 
 ## Step 2: Deploy the backend on Render Free
 
@@ -56,9 +53,7 @@ JWT_EXPIRATION_MINUTES=180
 APP_CORS_ALLOWED_ORIGINS=https://your-frontend-project.vercel.app
 APP_FRONTEND_URL=https://your-frontend-project.vercel.app
 APP_SEED_DEMO_DATA=true
-SPRING_DATASOURCE_URL=<jdbc-url-from-neon>
-SPRING_DATASOURCE_USERNAME=<username-from-neon>
-SPRING_DATASOURCE_PASSWORD=<password-from-neon>
+DATABASE_URL=<direct-postgres-url-from-neon>
 ```
 
 6. Deploy and wait for the health check at `/api/health` to pass.

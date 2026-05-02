@@ -533,8 +533,8 @@ export default function SessionRoomPage() {
   if (isLoading) {
     return (
       <AuthGuard>
-        <main className="page-shell flex min-h-screen items-center justify-center px-6 py-10">
-          <div className="card-surface rounded-[2rem] px-8 py-6 text-sm font-medium text-slate-600">
+        <main className="page-shell flex min-h-screen items-center justify-center px-4 py-8">
+          <div className="card-surface rounded-3xl px-8 py-6 text-sm font-medium text-slate-600">
             Loading session room...
           </div>
         </main>
@@ -545,8 +545,8 @@ export default function SessionRoomPage() {
   if (pageError || !session) {
     return (
       <AuthGuard>
-        <main className="page-shell flex min-h-screen items-center justify-center px-6 py-10">
-          <section className="card-surface soft-appear w-full max-w-2xl rounded-[2rem] p-10 text-center">
+        <main className="page-shell flex min-h-screen items-center justify-center px-4 py-8">
+          <section className="card-surface soft-appear w-full max-w-2xl rounded-3xl p-8 text-center sm:p-10">
             <div className="mb-8 flex justify-center">
               <BrandMark />
             </div>
@@ -596,18 +596,28 @@ export default function SessionRoomPage() {
 
   return (
     <AuthGuard>
-      <main className="page-shell min-h-screen px-6 py-8">
-        <section className="mx-auto flex max-w-[1600px] flex-col gap-6">
-          <header className="card-surface ambient-border soft-appear flex flex-col gap-4 rounded-[2rem] p-5 lg:flex-row lg:items-center lg:justify-between">
-            <BrandMark />
-            <div className="flex flex-col gap-3 lg:items-end">
-              <p className="section-kicker">Private mentoring room</p>
-              <h1 className="display-font text-3xl font-bold text-slate-950">
-                {session.topic}
-              </h1>
-              <p className="text-sm text-slate-600">
-                {getLanguageLabel(session.language)} | {getDifficultyLabel(session.difficulty)} | {formatSessionDate(session.scheduledAt)} | {formatDuration(session.durationMinutes)}
-              </p>
+      <main className="page-shell min-h-screen px-4 py-5 sm:px-6 lg:px-8">
+        <section className="mx-auto flex max-w-[1760px] flex-col gap-5">
+          <header className="card-surface ambient-border soft-appear flex flex-col gap-4 rounded-3xl p-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex items-center gap-4">
+              <BrandMark />
+              <div className="hidden h-9 w-px bg-slate-200 sm:block" />
+              <div>
+                <p className="section-kicker">Private mentoring room</p>
+                <h1 className="display-font text-2xl font-bold text-slate-950 sm:text-3xl">
+                  {session.topic}
+                </h1>
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 text-sm text-slate-600 lg:justify-end">
+              <span className="rounded-full bg-slate-100 px-3 py-1 font-semibold text-slate-700">
+                {getLanguageLabel(session.language)}
+              </span>
+              <span className="rounded-full bg-teal-50 px-3 py-1 font-semibold text-teal-700">
+                {getDifficultyLabel(session.difficulty)}
+              </span>
+              <span>{formatSessionDate(session.scheduledAt)}</span>
+              <span>{formatDuration(session.durationMinutes)}</span>
             </div>
           </header>
 
@@ -619,88 +629,94 @@ export default function SessionRoomPage() {
             error={realtime.lastError}
           />
 
-          <section className="grid gap-6 xl:grid-cols-[1.45fr_360px]">
-            <VideoPanel
-              localVideoRef={webRtc.localVideoRef}
-              remoteVideoRef={webRtc.remoteVideoRef}
-              callState={webRtc.callState}
-              mediaError={webRtc.mediaError}
-              localMediaState={webRtc.localMediaState}
-              remoteMediaState={webRtc.remoteMediaState}
-              remoteParticipantLabel={remoteParticipantLabel}
-              canControlRemoteMedia={canMentorControlRemoteMedia}
-              controlsDisabled={sessionEnded}
-              onReconnect={webRtc.reconnectCall}
-              onLeaveCall={webRtc.leaveCall}
-              onToggleMicrophone={webRtc.toggleMicrophone}
-              onToggleCamera={webRtc.toggleCamera}
-              onToggleScreenShare={webRtc.toggleScreenShare}
-              onSetRemoteMicrophoneEnabled={webRtc.setRemoteMicrophoneEnabled}
-              onSetRemoteCameraEnabled={webRtc.setRemoteCameraEnabled}
-            />
-            <SessionSidebar
-              session={session}
-              currentUserId={user.id}
-              connectionState={realtime.connectionState}
-              presence={remotePresence}
-              isEndingSession={isEndingSession}
-              onCopyLink={handleCopyLink}
-              onDownloadCalendar={handleDownloadCalendar}
-              onLeave={handleLeaveRoom}
-              onEndSession={handleEndSession}
-            />
+          <section className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+            <div className="xl:col-start-1">
+              <VideoPanel
+                localVideoRef={webRtc.localVideoRef}
+                remoteVideoRef={webRtc.remoteVideoRef}
+                callState={webRtc.callState}
+                hasRemoteVideo={webRtc.hasRemoteVideo}
+                mediaError={webRtc.mediaError}
+                localMediaState={webRtc.localMediaState}
+                remoteMediaState={webRtc.remoteMediaState}
+                remoteParticipantLabel={remoteParticipantLabel}
+                canControlRemoteMedia={canMentorControlRemoteMedia}
+                controlsDisabled={sessionEnded}
+                onReconnect={webRtc.reconnectCall}
+                onLeaveCall={webRtc.leaveCall}
+                onToggleMicrophone={webRtc.toggleMicrophone}
+                onToggleCamera={webRtc.toggleCamera}
+                onToggleScreenShare={webRtc.toggleScreenShare}
+                onSetRemoteMicrophoneEnabled={webRtc.setRemoteMicrophoneEnabled}
+                onSetRemoteCameraEnabled={webRtc.setRemoteCameraEnabled}
+              />
+            </div>
+
+            <div className="xl:col-start-2 xl:row-span-2">
+              <SessionSidebar
+                session={session}
+                currentUserId={user.id}
+                connectionState={realtime.connectionState}
+                presence={remotePresence}
+                isEndingSession={isEndingSession}
+                onCopyLink={handleCopyLink}
+                onDownloadCalendar={handleDownloadCalendar}
+                onLeave={handleLeaveRoom}
+                onEndSession={handleEndSession}
+              />
+            </div>
+
+            <section className="grid items-start gap-5 xl:col-start-1 2xl:grid-cols-[minmax(0,1fr)_420px]">
+              <CodeEditorPanel
+                code={realtime.code}
+                onChange={realtime.updateCodeFromUser}
+                connectionState={realtime.connectionState}
+                lastCodeSyncedAt={realtime.lastCodeSyncedAt}
+                isCodeSyncPending={realtime.isCodeSyncPending}
+                recoveryDraftUpdatedAt={localCodeRecovery?.updatedAt}
+                onRestoreDraft={handleRestoreLocalCodeDraft}
+                onDismissDraft={handleDismissLocalCodeDraft}
+                onCopyCode={handleCopyCode}
+                onDownloadCode={handleDownloadCode}
+                language={session.language}
+                templateKey={session.templateKey}
+                remotePresence={remotePresence}
+                canManageWorkspace={user.role === "MENTOR" && !sessionEnded}
+                isSavingWorkspaceSettings={isSavingWorkspace}
+                onPersistLanguage={handlePersistLanguage}
+                onLoadStarterTemplate={handleLoadStarterTemplate}
+                onPresenceUpdate={realtime.updatePresence}
+                onShareSelection={handleShareCodeSelection}
+                disabled={sessionEnded}
+              />
+              <ChatPanel
+                messages={realtime.messages}
+                currentUserId={user.id}
+                draft={chatDraft}
+                draftDisabled={sessionEnded}
+                sendDisabled={chatSendDisabled}
+                statusMessage={chatStatusMessage}
+                onDraftChange={setChatDraft}
+                onSend={sendChatMessage}
+                onTypingChange={(isTyping) =>
+                  realtime.updatePresence(
+                    isTyping
+                      ? {
+                          activity: "chatting",
+                          isTyping: true
+                        }
+                      : {
+                          isTyping: false
+                        },
+                    { immediate: !isTyping }
+                  )
+                }
+              />
+            </section>
           </section>
 
-          <section className="grid gap-6 xl:grid-cols-[1.35fr_0.75fr]">
-            <CodeEditorPanel
-              code={realtime.code}
-              onChange={realtime.updateCodeFromUser}
-              connectionState={realtime.connectionState}
-              lastCodeSyncedAt={realtime.lastCodeSyncedAt}
-              isCodeSyncPending={realtime.isCodeSyncPending}
-              recoveryDraftUpdatedAt={localCodeRecovery?.updatedAt}
-              onRestoreDraft={handleRestoreLocalCodeDraft}
-              onDismissDraft={handleDismissLocalCodeDraft}
-              onCopyCode={handleCopyCode}
-              onDownloadCode={handleDownloadCode}
-              language={session.language}
-              templateKey={session.templateKey}
-              remotePresence={remotePresence}
-              canManageWorkspace={user.role === "MENTOR" && !sessionEnded}
-              isSavingWorkspaceSettings={isSavingWorkspace}
-              onPersistLanguage={handlePersistLanguage}
-              onLoadStarterTemplate={handleLoadStarterTemplate}
-              onPresenceUpdate={realtime.updatePresence}
-              onShareSelection={handleShareCodeSelection}
-              disabled={sessionEnded}
-            />
-            <ChatPanel
-              messages={realtime.messages}
-              currentUserId={user.id}
-              draft={chatDraft}
-              draftDisabled={sessionEnded}
-              sendDisabled={chatSendDisabled}
-              statusMessage={chatStatusMessage}
-              onDraftChange={setChatDraft}
-              onSend={sendChatMessage}
-              onTypingChange={(isTyping) =>
-                realtime.updatePresence(
-                  isTyping
-                    ? {
-                        activity: "chatting",
-                        isTyping: true
-                      }
-                    : {
-                        isTyping: false
-                      },
-                  { immediate: !isTyping }
-                )
-              }
-            />
-          </section>
-
-          <section className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
-            <article className="card-surface ambient-border rounded-[2rem] p-6">
+          <section className="grid gap-5 xl:grid-cols-[1.05fr_0.95fr]">
+            <article className="card-surface ambient-border rounded-3xl p-5">
               <p className="section-kicker">Session outcomes</p>
               <h2 className="display-font mt-2 text-2xl font-bold text-slate-950">
                 Notes, homework, and follow-up
@@ -755,21 +771,21 @@ export default function SessionRoomPage() {
                     {isSavingWorkspace ? "Saving..." : "Save follow-up"}
                   </Button>
                 ) : (
-                  <div className="rounded-[1.5rem] bg-slate-50 p-4 text-sm leading-7 text-slate-600 ring-1 ring-slate-200">
+                  <div className="panel-muted rounded-2xl p-4 text-sm leading-7 text-slate-600">
                     Students can review these notes after the mentor saves them.
                   </div>
                 )}
               </div>
             </article>
 
-            <article className="card-surface ambient-border rounded-[2rem] p-6">
+            <article className="card-surface ambient-border rounded-3xl p-5">
               <p className="section-kicker">Session context</p>
               <h2 className="display-font mt-2 text-2xl font-bold text-slate-950">
                 People, goals, and feedback
               </h2>
               <div className="mt-6 grid gap-4 sm:grid-cols-2">
                 {[session.mentor, session.student].filter(Boolean).map((participant) => (
-                  <div key={participant!.id} className="rounded-[1.6rem] bg-white/84 p-4 ring-1 ring-slate-200">
+                  <div key={participant!.id} className="panel-muted rounded-2xl p-4">
                     <div className="flex items-center gap-3">
                       <AvatarBadge name={participant!.displayName} tone={participant!.id === session.mentor.id ? "accent" : "neutral"} />
                       <div>
@@ -782,14 +798,14 @@ export default function SessionRoomPage() {
                 ))}
               </div>
 
-              <div className="mt-6 rounded-[1.6rem] bg-slate-50 p-4 ring-1 ring-slate-200">
+              <div className="panel-muted mt-6 rounded-2xl p-4">
                 <p className="text-sm font-semibold text-slate-950">Session setup</p>
                 <p className="mt-3 text-sm leading-7 text-slate-600">Starter: {getTemplateLabel(session.templateKey)}</p>
                 <p className="text-sm leading-7 text-slate-600">Student goal: {session.studentGoal ?? "Aligned live collaboration"}</p>
                 <p className="text-sm leading-7 text-slate-600">Agenda: {session.agenda ?? "No written agenda yet."}</p>
               </div>
 
-              <div className="mt-6 rounded-[1.6rem] bg-white/84 p-4 ring-1 ring-slate-200">
+              <div className="panel-muted mt-6 rounded-2xl p-4">
                 <p className="text-sm font-semibold text-slate-950">Student feedback</p>
                 <div className="mt-4 flex gap-2">
                   {[1, 2, 3, 4, 5].map((value) => (
