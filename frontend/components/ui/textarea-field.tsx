@@ -21,7 +21,7 @@ export function TextareaField({
       <span className="text-sm font-medium text-slate-700">{label}</span>
       <textarea
         className={cn(
-          "min-h-[120px] rounded-[1.6rem] border border-slate-200 bg-white/92 px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100",
+          "field-control min-h-[120px] px-4 py-3 text-sm placeholder:text-slate-400 disabled:cursor-not-allowed disabled:bg-slate-100",
           error && "border-rose-300 focus:border-rose-400 focus:ring-rose-100",
           className
         )}

@@ -1,12 +1,14 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f5f7f4;
+  --background: #f4f6f3;
   --foreground: #0f172a;
-  --muted: #64748b;
-  --card: rgba(255, 255, 255, 0.8);
+  --muted: #667085;
+  --card: rgba(255, 255, 255, 0.94);
+  --line: rgba(15, 23, 42, 0.1);
+  --accent: #0f766e;
   --font-sans: "Aptos", "Segoe UI Variable Text", "Segoe UI", sans-serif;
-  --font-display: "Rockwell Nova", "Bahnschrift", "Trebuchet MS", "Segoe UI Variable Display", sans-serif;
+  --font-display: "Aptos Display", "Bahnschrift", "Segoe UI Variable Display", sans-serif;
 }
 
 * {
@@ -21,10 +23,9 @@ body {
   margin: 0;
   min-height: 100vh;
   background:
-    radial-gradient(circle at top left, rgba(20, 184, 166, 0.16), transparent 28%),
-    radial-gradient(circle at top right, rgba(245, 158, 11, 0.14), transparent 24%),
-    radial-gradient(circle at bottom left, rgba(15, 23, 42, 0.06), transparent 24%),
-    linear-gradient(180deg, #f7faf7 0%, #edf7f3 48%, #e2ebe6 100%);
+    linear-gradient(115deg, rgba(15, 118, 110, 0.08), transparent 34%),
+    radial-gradient(circle at 86% 10%, rgba(245, 158, 11, 0.1), transparent 22%),
+    linear-gradient(180deg, #fbfcfa 0%, #f2f5f1 46%, #e9eee9 100%);
   color: var(--foreground);
   font-family: var(--font-sans), sans-serif;
   text-rendering: optimizeLegibility;
@@ -61,9 +62,9 @@ select {
 
 .card-surface {
   background: var(--card);
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.65);
-  box-shadow: 0 30px 90px -48px rgba(15, 23, 42, 0.36);
+  backdrop-filter: blur(18px);
+  border: 1px solid var(--line);
+  box-shadow: 0 22px 60px -44px rgba(15, 23, 42, 0.45);
 }
 
 .interactive-surface {
@@ -75,18 +76,18 @@ select {
 }
 
 .interactive-surface:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 28px 68px -42px rgba(16, 185, 129, 0.3);
-  border-color: rgba(16, 185, 129, 0.28);
-  background: rgba(255, 255, 255, 0.94);
+  transform: translateY(-2px);
+  box-shadow: 0 22px 58px -42px rgba(15, 23, 42, 0.38);
+  border-color: rgba(15, 118, 110, 0.22);
+  background: rgba(255, 255, 255, 0.98);
 }
 
 .interactive-surface:focus-visible {
   outline: none;
-  transform: translateY(-4px);
+  transform: translateY(-2px);
   box-shadow:
-    0 0 0 4px rgba(110, 231, 183, 0.55),
-    0 28px 68px -42px rgba(16, 185, 129, 0.3);
+    0 0 0 4px rgba(20, 184, 166, 0.18),
+    0 22px 58px -42px rgba(15, 23, 42, 0.38);
 }
 
 .page-shell {
@@ -100,10 +101,10 @@ select {
   inset: 0;
   z-index: -1;
   background-image:
-    linear-gradient(rgba(148, 163, 184, 0.06) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(148, 163, 184, 0.06) 1px, transparent 1px);
-  background-size: 84px 84px;
-  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.7), transparent 92%);
+    linear-gradient(rgba(15, 23, 42, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(15, 23, 42, 0.045) 1px, transparent 1px);
+  background-size: 64px 64px;
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.55), transparent 86%);
 }
 
 .soft-appear {
@@ -114,8 +115,8 @@ select {
   font-size: 0.72rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.24em;
-  color: #0f766e;
+  letter-spacing: 0.18em;
+  color: var(--accent);
 }
 
 .ambient-border {
@@ -128,13 +129,43 @@ select {
   inset: 0;
   border-radius: inherit;
   padding: 1px;
-  background: linear-gradient(135deg, rgba(15, 23, 42, 0.12), rgba(16, 185, 129, 0.18), rgba(245, 158, 11, 0.18));
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.12), rgba(15, 118, 110, 0.16), rgba(245, 158, 11, 0.12));
   -webkit-mask:
     linear-gradient(#fff 0 0) content-box,
     linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
   pointer-events: none;
+}
+
+.panel-muted {
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(248, 250, 252, 0.82);
+}
+
+.field-control {
+  border-radius: 0.875rem;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: rgba(255, 255, 255, 0.96);
+  color: #0f172a;
+  outline: none;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    background-color 0.18s ease;
+}
+
+.field-control:focus {
+  border-color: rgba(15, 118, 110, 0.55);
+  box-shadow: 0 0 0 4px rgba(20, 184, 166, 0.14);
+}
+
+.toolbar-pill {
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(2, 6, 23, 0.72);
+  color: white;
+  backdrop-filter: blur(16px);
 }
 
 @keyframes soft-appear {

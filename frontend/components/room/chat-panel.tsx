@@ -63,7 +63,7 @@ export function ChatPanel({
   };
 
   return (
-    <section className="card-surface flex min-h-[420px] flex-col rounded-[2rem] p-5">
+    <section className="card-surface flex min-h-[420px] flex-col rounded-3xl p-5">
       <div className="mb-4 flex items-center justify-between">
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.22em] text-slate-500">
@@ -80,7 +80,7 @@ export function ChatPanel({
 
       <div className="flex-1 space-y-3 overflow-y-auto pr-1">
         {messages.length === 0 ? (
-          <div className="rounded-3xl border border-dashed border-slate-200 px-4 py-8 text-center text-sm text-slate-500">
+          <div className="rounded-2xl border border-dashed border-slate-200 px-4 py-8 text-center text-sm text-slate-500">
             Messages exchanged during the session will appear here.
           </div>
         ) : null}
@@ -92,13 +92,13 @@ export function ChatPanel({
             return (
               <div
                 key={message.id}
-                className="mx-auto max-w-[92%] rounded-3xl border border-emerald-200 bg-emerald-50/90 px-4 py-3 text-center text-sm text-emerald-900"
+                className="mx-auto max-w-[92%] rounded-2xl border border-teal-200 bg-teal-50/90 px-4 py-3 text-center text-sm text-teal-900"
               >
-                <p className="font-semibold uppercase tracking-[0.18em] text-emerald-700">
+                <p className="font-semibold uppercase tracking-[0.18em] text-teal-700">
                   Timeline update
                 </p>
                 <p className="mt-2 leading-6">{message.content}</p>
-                <p className="mt-2 text-xs text-emerald-700/80">
+                <p className="mt-2 text-xs text-teal-700/80">
                   {formatRelativeTime(message.createdAt)}
                 </p>
               </div>
@@ -109,10 +109,10 @@ export function ChatPanel({
             <div
               key={message.id}
               className={cn(
-                "rounded-3xl px-4 py-3",
+                "rounded-2xl px-4 py-3",
                 ownMessage
-                  ? "ml-10 bg-slate-950 text-white"
-                  : "mr-10 bg-white/90 text-slate-900 ring-1 ring-slate-200"
+                  ? "ml-4 bg-slate-950 text-white sm:ml-10"
+                  : "mr-4 bg-white/90 text-slate-900 ring-1 ring-slate-200 sm:mr-10"
               )}
             >
               <div className="mb-1 flex items-center justify-between gap-3">
@@ -132,7 +132,7 @@ export function ChatPanel({
               {message.messageKind === "CODE_SNIPPET" && message.snippetCode ? (
                 <div
                   className={cn(
-                    "mt-3 rounded-[1.4rem] p-4",
+                    "mt-3 rounded-2xl p-4",
                     ownMessage
                       ? "bg-white/8 ring-1 ring-white/12"
                       : "bg-slate-950 text-slate-50"
@@ -157,7 +157,7 @@ export function ChatPanel({
                       Copy
                     </Button>
                   </div>
-                  <pre className="overflow-x-auto whitespace-pre-wrap rounded-[1.2rem] bg-black/20 px-4 py-3 text-xs leading-6">
+                  <pre className="overflow-x-auto whitespace-pre-wrap rounded-xl bg-black/20 px-4 py-3 text-xs leading-6">
                     <code>{message.snippetCode}</code>
                   </pre>
                 </div>
@@ -178,7 +178,7 @@ export function ChatPanel({
         <textarea
           rows={2}
           maxLength={2000}
-          className="min-h-[72px] flex-1 resize-none rounded-3xl border border-slate-200 bg-white/90 px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-4 focus:ring-sky-100 disabled:cursor-not-allowed disabled:bg-slate-100"
+          className="field-control min-h-[72px] flex-1 resize-none px-4 py-3 text-sm placeholder:text-slate-400 disabled:cursor-not-allowed disabled:bg-slate-100"
           placeholder="Send a note, hint, or explanation..."
           value={draft}
           disabled={draftDisabled}
@@ -197,7 +197,7 @@ export function ChatPanel({
         <Button
           type="submit"
           disabled={sendDisabled || !draft.trim()}
-          className="self-end rounded-3xl px-5 py-3"
+          className="self-end px-5 py-3"
         >
           <SendHorizontal className="h-4 w-4" />
         </Button>

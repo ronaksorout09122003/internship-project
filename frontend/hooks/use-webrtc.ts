@@ -18,6 +18,10 @@ interface UseWebRtcArgs {
 }
 
 type CallState = "waiting" | "calling" | "connected" | "disconnected";
+type CreateOfferOptions = {
+  force?: boolean;
+  iceRestart?: boolean;
+};
 
 const rtcConfig: RTCConfiguration = {
   iceServers: buildIceServers()
@@ -39,6 +43,8 @@ export function useWebRTC({
 }: UseWebRtcArgs) {
   const [callState, setCallState] = useState<CallState>("waiting");
   const [mediaError, setMediaError] = useState<string | null>(null);
+  const [isLocalMediaReady, setIsLocalMediaReady] = useState(false);
+  const [hasRemoteVideo, setHasRemoteVideo] = useState(false);
   const [localMediaState, setLocalMediaState] =
     useState<ParticipantMediaState>(DEFAULT_MEDIA_STATE);
   const [remoteMediaState, setRemoteMediaState] =
@@ -51,6 +57,7 @@ export function useWebRTC({
   const pendingCandidatesRef = useRef<RTCIceCandidateInit[]>([]);
   const readySignalAtRef = useRef(0);
   const offerInFlightRef = useRef(false);
+  const lastOfferAtRef = useRef(0);
   const cameraTrackRef = useRef<MediaStreamTrack | null>(null);
   const screenTrackRef = useRef<MediaStreamTrack | null>(null);
   const screenStreamRef = useRef<MediaStream | null>(null);
@@ -66,12 +73,14 @@ export function useWebRTC({
   const attachLocalStream = useEffectEvent(() => {
     if (localVideoRef.current && localStreamRef.current) {
       localVideoRef.current.srcObject = localStreamRef.current;
+      void localVideoRef.current.play().catch(() => undefined);
     }
   });
 
   const attachRemoteStream = useEffectEvent(() => {
     if (remoteVideoRef.current && remoteStreamRef.current) {
       remoteVideoRef.current.srcObject = remoteStreamRef.current;
+      void remoteVideoRef.current.play().catch(() => undefined);
     }
   });
 
@@ -79,7 +88,9 @@ export function useWebRTC({
     peerConnectionRef.current?.close();
     peerConnectionRef.current = null;
     pendingCandidatesRef.current = [];
+    offerInFlightRef.current = false;
     remoteStreamRef.current = null;
+    setHasRemoteVideo(false);
     if (remoteVideoRef.current) {
       remoteVideoRef.current.srcObject = null;
     }
@@ -155,6 +166,9 @@ export function useWebRTC({
       await sender.replaceTrack(nextTrack);
     } else if (nextTrack && peerConnectionRef.current && localStreamRef.current) {
       peerConnectionRef.current.addTrack(nextTrack, localStreamRef.current);
+      if (currentUser?.role === "MENTOR") {
+        void createOffer({ force: true });
+      }
     }
 
     attachLocalStream();
@@ -192,12 +206,23 @@ export function useWebRTC({
       }
     };
 
+    connection.onnegotiationneeded = () => {
+      if (currentUser?.role === "MENTOR") {
+        void createOffer({ force: true });
+      }
+    };
+
     connection.ontrack = (event) => {
       if (!remoteStreamRef.current) {
         remoteStreamRef.current = new MediaStream();
       }
 
-      event.streams[0]?.getTracks().forEach((track) => {
+      const incomingTracks =
+        event.streams.length > 0
+          ? event.streams.flatMap((stream) => stream.getTracks())
+          : [event.track];
+
+      incomingTracks.forEach((track) => {
         const alreadyAdded = remoteStreamRef.current
           ?.getTracks()
           .some((existingTrack) => existingTrack.id === track.id);
@@ -205,7 +230,18 @@ export function useWebRTC({
         if (!alreadyAdded) {
           remoteStreamRef.current?.addTrack(track);
         }
+
+        if (track.kind === "video") {
+          setHasRemoteVideo(true);
+          track.onended = () => setHasRemoteVideo(false);
+        }
+
+        track.onunmute = () => {
+          setCallState("connected");
+          attachRemoteStream();
+        };
       });
+      setCallState("connected");
       attachRemoteStream();
     };
 
@@ -220,6 +256,17 @@ export function useWebRTC({
         connection.connectionState === "closed"
       ) {
         setCallState("disconnected");
+      }
+    };
+
+    connection.oniceconnectionstatechange = () => {
+      if (connection.iceConnectionState === "failed") {
+        setCallState("disconnected");
+        connection.restartIce?.();
+
+        if (currentUser?.role === "MENTOR") {
+          void createOffer({ force: true, iceRestart: true });
+        }
       }
     };
 
@@ -239,23 +286,49 @@ export function useWebRTC({
     pendingCandidatesRef.current = [];
   });
 
-  const createOffer = useEffectEvent(async () => {
+  const createOffer = useEffectEvent(async (options: CreateOfferOptions = {}) => {
     if (!currentUser || currentUser.role !== "MENTOR" || !localStreamRef.current) {
       return;
     }
 
-    if (offerInFlightRef.current || callState === "connected") {
+    if (offerInFlightRef.current || (!options.force && callState === "connected")) {
+      return;
+    }
+
+    const existingConnection = peerConnectionRef.current;
+    const hasLiveRemoteMedia =
+      remoteStreamRef.current
+        ?.getTracks()
+        .some((track) => track.readyState === "live") ?? false;
+    if (
+      !options.iceRestart &&
+      (existingConnection?.connectionState === "connected" ||
+        (callState === "connected" && hasLiveRemoteMedia))
+    ) {
+      return;
+    }
+
+    const now = Date.now();
+    if (now - lastOfferAtRef.current < 1200) {
       return;
     }
 
     offerInFlightRef.current = true;
     try {
       const connection = ensurePeerConnection();
+      if (connection.signalingState !== "stable") {
+        return;
+      }
+
+      lastOfferAtRef.current = now;
       setCallState("calling");
-      const offer = await connection.createOffer();
+      const offer = await connection.createOffer({
+        iceRestart: options.iceRestart === true
+      });
       await connection.setLocalDescription(offer);
       sendSignal("OFFER", {
-        sdp: offer
+        sdp: connection.localDescription ?? offer,
+        iceRestart: options.iceRestart === true
       });
     } finally {
       offerInFlightRef.current = false;
@@ -320,9 +393,11 @@ export function useWebRTC({
 
         localStreamRef.current = stream;
         cameraTrackRef.current = stream.getVideoTracks()[0] ?? null;
+        setIsLocalMediaReady(true);
         attachLocalStream();
         syncLocalMediaState();
       } catch {
+        setIsLocalMediaReady(false);
         setMediaError("Camera or microphone permission was denied.");
       }
     })();
@@ -331,6 +406,7 @@ export function useWebRTC({
       active = false;
       screenStreamRef.current?.getTracks().forEach((track) => track.stop());
       localStreamRef.current?.getTracks().forEach((track) => track.stop());
+      setIsLocalMediaReady(false);
       cleanupPeerConnection();
     };
   }, []);
@@ -340,6 +416,8 @@ export function useWebRTC({
       microphoneForcedOff: false,
       cameraForcedOff: false
     };
+    cleanupPeerConnection();
+    setCallState("waiting");
     setRemoteMediaState(null);
     void stopScreenShare();
     syncLocalMediaState();
@@ -351,17 +429,37 @@ export function useWebRTC({
       !currentUser ||
       !session.student ||
       !isRealtimeConnected ||
-      !localStreamRef.current
+      !localStreamRef.current ||
+      !isLocalMediaReady ||
+      callState === "connected"
     ) {
       return;
     }
 
-    setCallState((current) => (current === "connected" ? current : "waiting"));
-    sendSignal("READY", {
-      from: currentUser.role
-    });
-    syncLocalMediaState();
-  }, [currentUser, isRealtimeConnected, session]);
+    setCallState((current) =>
+      current === "disconnected" ? "waiting" : current
+    );
+    const publishReady = () => {
+      sendSignal("READY", {
+        from: currentUser.role,
+        mediaReady: true
+      });
+      syncLocalMediaState();
+    };
+
+    publishReady();
+    const interval = window.setInterval(publishReady, 2000);
+
+    return () => window.clearInterval(interval);
+  }, [
+    callState,
+    currentUser?.id,
+    currentUser?.role,
+    isLocalMediaReady,
+    isRealtimeConnected,
+    session?.id,
+    session?.student?.id
+  ]);
 
   const handleSignal = useEffectEvent(async (signal: SignalMessage) => {
     if (!currentUser || signal.senderId === currentUser.id) {
@@ -389,12 +487,21 @@ export function useWebRTC({
           return;
         }
 
-        await createOffer();
+        const connection = peerConnectionRef.current;
+        const hasLiveConnection =
+          connection?.connectionState === "connected" ||
+          connection?.iceConnectionState === "connected" ||
+          connection?.iceConnectionState === "completed";
+        await createOffer({ force: !hasLiveConnection });
         return;
       }
       case "OFFER": {
-        cleanupPeerConnection();
-        const connection = ensurePeerConnection();
+        let connection = ensurePeerConnection();
+        if (connection.signalingState !== "stable") {
+          cleanupPeerConnection();
+          connection = ensurePeerConnection();
+        }
+
         const offer = signal.payload.sdp as RTCSessionDescriptionInit;
         await connection.setRemoteDescription(new RTCSessionDescription(offer));
         await flushPendingCandidates();
@@ -408,6 +515,10 @@ export function useWebRTC({
       }
       case "ANSWER": {
         const connection = ensurePeerConnection();
+        if (connection.signalingState === "stable") {
+          return;
+        }
+
         const answer = signal.payload.sdp as RTCSessionDescriptionInit;
         await connection.setRemoteDescription(new RTCSessionDescription(answer));
         await flushPendingCandidates();
@@ -421,7 +532,11 @@ export function useWebRTC({
 
         const connection = ensurePeerConnection();
         if (connection.remoteDescription) {
-          await connection.addIceCandidate(new RTCIceCandidate(candidate));
+          try {
+            await connection.addIceCandidate(new RTCIceCandidate(candidate));
+          } catch {
+            pendingCandidatesRef.current.push(candidate);
+          }
         } else {
           pendingCandidatesRef.current.push(candidate);
         }
@@ -483,7 +598,7 @@ export function useWebRTC({
     setCallState("calling");
 
     if (currentUser?.role === "MENTOR") {
-      await createOffer();
+      await createOffer({ force: true, iceRestart: true });
       return;
     }
 
@@ -558,6 +673,7 @@ export function useWebRTC({
     localVideoRef,
     remoteVideoRef,
     callState,
+    hasRemoteVideo,
     mediaError,
     localMediaState,
     remoteMediaState,

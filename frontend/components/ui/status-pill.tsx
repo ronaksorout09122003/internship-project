@@ -11,7 +11,11 @@ const statusClasses: Record<string, string> = {
   waiting: "bg-amber-100 text-amber-800 ring-1 ring-amber-200",
   calling: "bg-sky-100 text-sky-800 ring-1 ring-sky-200",
   disconnected: "bg-rose-100 text-rose-700 ring-1 ring-rose-200",
-  error: "bg-rose-100 text-rose-700 ring-1 ring-rose-200"
+  error: "bg-rose-100 text-rose-700 ring-1 ring-rose-200",
+  Live: "bg-emerald-100 text-emerald-800 ring-1 ring-emerald-200",
+  Connecting: "bg-sky-100 text-sky-800 ring-1 ring-sky-200",
+  Waiting: "bg-amber-100 text-amber-800 ring-1 ring-amber-200",
+  "Reconnection needed": "bg-rose-100 text-rose-700 ring-1 ring-rose-200"
 };
 
 export function StatusPill({ label }: { label: string }) {

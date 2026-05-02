@@ -95,7 +95,7 @@ export function SessionSidebar({
   }, [now, session.durationMinutes, session.scheduledAt, session.status]);
 
   return (
-    <aside className="card-surface ambient-border h-full rounded-[2rem] p-5">
+    <aside className="card-surface ambient-border h-full rounded-3xl p-5">
       <div className="mb-4 flex items-start justify-between gap-3">
         <div>
           <p className="section-kicker">
@@ -109,7 +109,7 @@ export function SessionSidebar({
       </div>
 
       <div className="space-y-4 text-sm text-slate-600">
-        <div className="rounded-3xl bg-white/80 p-4 ring-1 ring-slate-200">
+        <div className="panel-muted rounded-2xl p-4">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
             Session pulse
           </p>
@@ -123,7 +123,7 @@ export function SessionSidebar({
           </div>
         </div>
 
-        <div className="rounded-3xl bg-white/80 p-4 ring-1 ring-slate-200">
+        <div className="panel-muted rounded-2xl p-4">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
             Session Code
           </p>
@@ -151,7 +151,7 @@ export function SessionSidebar({
           </p>
         </div>
 
-        <div className="rounded-3xl bg-white/80 p-4 ring-1 ring-slate-200">
+        <div className="panel-muted rounded-2xl p-4">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
             Session posture
           </p>
@@ -159,7 +159,7 @@ export function SessionSidebar({
             <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
               {getLanguageLabel(session.language)}
             </span>
-            <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+            <span className="rounded-full bg-teal-50 px-3 py-1 text-xs font-semibold text-teal-700">
               {getDifficultyLabel(session.difficulty)}
             </span>
             <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
@@ -173,7 +173,7 @@ export function SessionSidebar({
           </div>
         </div>
 
-        <div className="rounded-3xl bg-white/80 p-4 ring-1 ring-slate-200">
+        <div className="panel-muted rounded-2xl p-4">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
             Participants
           </p>
@@ -204,7 +204,7 @@ export function SessionSidebar({
           </div>
         </div>
 
-        <div className="rounded-3xl bg-white/80 p-4 ring-1 ring-slate-200">
+        <div className="panel-muted rounded-2xl p-4">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
             Collaborator presence
           </p>
@@ -213,13 +213,13 @@ export function SessionSidebar({
               presence.map((entry) => (
                 <div
                   key={entry.senderId}
-                  className="rounded-[1.3rem] bg-slate-50 px-4 py-3"
+                  className="rounded-xl bg-white/80 px-4 py-3 ring-1 ring-slate-200"
                 >
                   <p className="font-semibold text-slate-900">{entry.displayName}</p>
                   <p className="mt-1 text-xs uppercase tracking-[0.18em] text-slate-500">
                     {entry.activity}
-                    {entry.cursorLine ? ` • line ${entry.cursorLine}` : ""}
-                    {entry.isTyping ? " • typing" : ""}
+                    {entry.cursorLine ? ` / line ${entry.cursorLine}` : ""}
+                    {entry.isTyping ? " / typing" : ""}
                   </p>
                 </div>
               ))
@@ -231,7 +231,7 @@ export function SessionSidebar({
           </div>
         </div>
 
-        <div className="rounded-3xl bg-white/80 p-4 ring-1 ring-slate-200">
+        <div className="panel-muted rounded-2xl p-4">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
             Room Health
           </p>
@@ -241,7 +241,7 @@ export function SessionSidebar({
               <span className="capitalize">Realtime {connectionState}</span>
             </div>
             <div className="flex items-center gap-2">
-              <Users className="h-4 w-4 text-emerald-600" />
+              <Users className="h-4 w-4 text-teal-600" />
               <span>{session.student ? "Both participants present" : "Waiting for student join"}</span>
             </div>
             <p>Created {formatTimestamp(session.createdAt)}</p>
@@ -250,7 +250,7 @@ export function SessionSidebar({
         </div>
 
         {session.agenda ? (
-          <div className="rounded-3xl bg-white/80 p-4 ring-1 ring-slate-200">
+          <div className="panel-muted rounded-2xl p-4">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
               Agenda
             </p>

@@ -17,9 +17,5 @@ services:
         sync: false
       - key: APP_SEED_DEMO_DATA
         value: "true"
-      - key: SPRING_DATASOURCE_URL
-        sync: false
-      - key: SPRING_DATASOURCE_USERNAME
-        sync: false
-      - key: SPRING_DATASOURCE_PASSWORD
+      - key: DATABASE_URL
         sync: false
